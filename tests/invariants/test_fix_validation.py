@@ -1,4 +1,4 @@
-"""Threat-model tests: TM-21. See docs/threat-model.md."""
+"""Threat-model tests: TM-21, TM-31. See docs/threat-model.md."""
 
 import pytest
 
@@ -27,4 +27,21 @@ def test_pr_description_states_production_impact() -> None:
 def test_merged_fix_is_reprobed_and_reopened_if_still_exposed() -> None:
     """Every merged fix is re-probed. If data is still exposed, the finding reopens and the owner
     is alerted."""
+    raise NotImplementedError
+
+
+@pytest.mark.xfail(
+    raises=NotImplementedError, strict=True, reason="TM-31 · prevention lands in Phase 5"
+)
+def test_validator_has_no_network_egress() -> None:
+    """The validator has no outbound network access."""
+    raise NotImplementedError
+
+
+@pytest.mark.xfail(
+    raises=NotImplementedError, strict=True, reason="TM-31 · prevention lands in Phase 5"
+)
+def test_validator_runs_no_repository_application_code() -> None:
+    """Validation runs only SQL: migrations, pgTAP database tests and probes. It never runs the
+    repo's application code, package scripts or dependency installs."""
     raise NotImplementedError

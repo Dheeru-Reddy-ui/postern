@@ -1,6 +1,6 @@
 # Postern threat model
 
-**Version:** 0.1 (Phase 0 draft, awaiting review) · **Date:** 2026-10-13
+**Version:** 0.2 (reviewed; decisions D1–D6 resolved in ADR-004 to ADR-009) · **Date:** 2026-10-13
 
 Postern is designed backward from how it could fail. Each failure mode below has an
 impact, a likelihood, one or more **structural preventions**, detection, and the phase where
@@ -79,10 +79,19 @@ fetched on 2026-10-13. Phase 3 re-verifies them with contract tests against real
 | `POST /v1/projects/{ref}/database/query` | `database:write` | beta | **never requested** |
 | `GET /v1/projects/{ref}/api-keys` | `secrets:read` | stable | **never requested** (invariant 2) |
 
+The same spec maps every read scope to the endpoints it unlocks:
+
+- `auth:read` returns the auth config, whose schema includes `smtp_pass`, every OAuth
+  provider's client secret, and auth-hook secrets.
+- `organizations:read` includes organization member lists.
+- `database:read` also covers saved SQL snippets, backups and pooler configuration.
+
 Consequences:
 
-- **Postern needs only `database:read`, plus whatever read scope lists a user's projects**
-  (to confirm in Phase 3). No `*:write` scope and no `secrets:*` scope is ever needed.
+- **Postern's scopes are `projects:read`, `database:read`, `rest:read` and `storage:read`**
+  ([ADR-005](adr/ADR-005-supabase-oauth-scopes.md)). There is no `*:write` scope and no
+  `secrets:*` scope. `auth:read` is excluded because it can return secrets, and
+  `organizations:read` because it returns people.
 - **Read-only does not mean data-blind.** `supabase_read_only_user` can `SELECT` every table.
   The read-only credential stops writes; it does not stop Postern from seeing rows. TM-01 and
   TM-02 rely on code-level allowlists for that reason.
@@ -124,6 +133,7 @@ Consequences:
 | TM-28 | Dependency or CI supply-chain compromise | Critical | Medium | 0, 8 |
 | TM-29 | Deploy pipeline identity abused | Critical | Low | 1 |
 | TM-30 | User data kept after disconnect | High | Medium | 8 |
+| TM-31 | Untrusted repository code runs inside Postern during fix validation | Critical | Medium | 5 |
 
 ---
 
@@ -150,7 +160,7 @@ Consequences:
   catalog introspection), keyed by hash. No agent grant includes free-form SQL.
   → `tests/invariants/test_read_only_query_allowlist.py::test_read_only_query_runs_only_allowlisted_statements`
 - Row values never enter an LLM prompt. Tool outputs are typed, and no type carries row
-  values (see decision D1).
+  values ([ADR-004](adr/ADR-004-no-row-values-in-prompts.md)).
   → `tests/invariants/test_llm_input_boundaries.py::test_row_values_never_reach_llm_prompt`
 
 **Detection:** The Platform Auditor samples `llm_calls` and logs for data-shaped strings
@@ -285,9 +295,13 @@ has never written SQL will sometimes paste the wrong one.
 - The onboarding key classifier rejects `sb_secret_` keys and any JWT whose `role` isn't
   `anon`, before persistence. A rejected value is never stored or logged.
   → `tests/credential_audit/test_supabase_scopes.py::test_onboarding_rejects_service_role_and_secret_keys`
-- Requested scopes must be a subset of a fixed allowlist (decision D2). No `secrets:*` or
-  `*:write` scope appears.
+- Requested scopes must be a subset of the fixed allowlist in ADR-005. No `secrets:*`,
+  `auth:read` or `*:write` scope appears.
   → `tests/credential_audit/test_supabase_scopes.py::test_oauth_scopes_are_within_read_only_allowlist`
+- The Supabase client implements only allowlisted `GET` endpoints. Endpoints inside a
+  granted scope that Postern doesn't need (SQL snippets, backups, pooler config) aren't
+  callable.
+  → `tests/credential_audit/test_supabase_scopes.py::test_supabase_client_calls_only_allowlisted_endpoints`
 - A live test confirms a real Postern token gets a refusal from `GET /v1/projects/{ref}/api-keys`.
   → `tests/credential_audit/test_supabase_scopes.py::test_supabase_token_cannot_read_api_keys`
 
@@ -337,6 +351,13 @@ branch that isn't protected.
 **Structural prevention:**
 - Every push goes through one function that only allows `refs/heads/postern/*`.
   → `tests/invariants/test_github_push_gate.py::test_push_gate_rejects_refs_outside_postern_namespace`
+- Postern pushes only to repos whose default branch has an active ruleset requiring an
+  approved pull request that the App can't bypass. This is checked at onboarding and again
+  right before every push ([ADR-006](adr/ADR-006-github-fixes-on-protected-repos.md)).
+  → `tests/invariants/test_github_push_gate.py::test_push_requires_verified_default_branch_ruleset`
+- Installation tokens are minted only for verified repos, with only the permissions the push
+  needs, so no live token exists for an unprotected repo.
+  → `tests/credential_audit/test_github_app_permissions.py::test_installation_tokens_scoped_to_verified_repos`
 - Postern's GitHub client has no merge, approve or ruleset-edit operation, and no agent grant
   names one.
   → `tests/invariants/test_github_push_gate.py::test_github_client_exposes_no_merge_or_approve_operations`
@@ -348,7 +369,8 @@ branch that isn't protected.
 **Detection:** GitHub webhook events for pushes to non-`postern/*` refs by the App alert as an
 incident.
 
-**Lands in:** Phase 5. **Residual risk R2** applies (repos without branch protection).
+**Lands in:** Phase 5. **Residual risk R2** applies (the App's private key could still mint a
+token for a repo the user installed it on without protection).
 
 ### TM-09 · A drafted fix contains destructive or weakening SQL
 
@@ -632,7 +654,7 @@ from production.
 - A PR is opened only if all four validations pass in the throwaway stack:
   - the anonymous probe returns 0 rows
   - an owner-scoped read still works
-  - the repo's existing tests pass
+  - the repo's database tests pass ([ADR-007](adr/ADR-007-fix-validation-runtime.md))
   - migrations apply from scratch
 
   → `tests/invariants/test_fix_validation.py::test_pr_not_opened_unless_all_validations_pass`
@@ -840,44 +862,54 @@ Deploy rights mean control of every Postern credential.
 
 **Lands in:** Phase 8.
 
+### TM-31 · Untrusted repository code runs inside Postern during fix validation
+
+Validation applies the repo's migrations as a database superuser, and migrations can contain
+anything, including `COPY ... FROM PROGRAM`, which runs shell commands. The repo, or a
+compromised collaborator, decides what runs.
+
+**Impact:** Critical, if the validator could reach Postern's secrets, control plane or the
+network.
+
+**Likelihood:** Medium. Every validation runs code Postern didn't write.
+
+**Structural prevention:**
+- The validator runs as its own service account, which has no Secret Manager access and no
+  control-plane credentials. Inputs and results pass through one storage prefix
+  ([ADR-007](adr/ADR-007-fix-validation-runtime.md)).
+  → `tests/credential_audit/test_gcp_iam.py::test_validator_has_no_secret_or_control_plane_access`
+- The validator has no outbound network access.
+  → `tests/invariants/test_fix_validation.py::test_validator_has_no_network_egress`
+- Validation runs only SQL: migrations, pgTAP database tests and probes. It never runs the
+  repo's application code, package scripts or dependency installs.
+  → `tests/invariants/test_fix_validation.py::test_validator_runs_no_repository_application_code`
+
+**Detection:** Validator executions are audit-logged with their input hash and duration, and
+anything unusual alerts (timeouts, unexpected processes, egress denials).
+
+**Lands in:** Phase 5.
+
 ---
 
-## Open decisions for Dheeru's review
+## Decisions (reviewed by Dheeru, 2026-10-13)
 
-- **D1: Row values never enter LLM prompts.** CLAUDE.md lists "row samples" as untrusted
-  content (invariant 10). But invariant 6 logs every prompt and invariant 4 forbids storing
-  row data, so a row sample in a prompt would be stored. I recommend agents never see row
-  values. Probes return counts, introspection returns schema only, and the row-sample safety
-  cases in Phase 4 stay as defence in depth.
-- **D2: The OAuth scope allowlist.** I propose `database:read`, plus the read scope needed to
-  list a user's projects (to confirm in Phase 3). `database:read` also allows the read-only
-  query endpoint, which can `SELECT` any table, so TM-01's statement allowlist carries real
-  weight.
-- **D3: Invariant 3 on repos without branch protection.** As far as I know, rulesets and
-  branch protection aren't available on private repos for GitHub Free accounts (to verify in
-  Phase 5). Postern also can't configure them on a user's repo without the `administration`
-  permission, which it shouldn't hold. For those repos the guarantee is Postern's push gate,
-  not GitHub. Options:
-  - (a) Only open PRs where a protecting ruleset is confirmed; everyone else gets reviewed
-    SQL plus instructions.
-  - (b) Accept the code-level guarantee and say so plainly on the privacy page.
-
-  Phase 5 says to stop and ask here; I'm raising it now because it changes the onboarding
-  story.
-- **D4: Where fix validation runs.** `supabase start` needs a Docker daemon, and Cloud Run
-  Jobs can't run one. Options include a Postgres image with Supabase roles inside the job,
-  or a CI runner. This needs an ADR before Phase 5.
-- **D5: Test projects and the Supabase free plan.** Phase 3 needs Postern's own project plus
-  a vulnerable and a clean test project. As far as I know, the free plan allows two active
-  projects (to verify), and free projects pause after a week of inactivity.
-- **D6: License** for the open-source repo.
+| Decision | Outcome | ADR |
+|---|---|---|
+| D1 · Row values in prompts | Never. Probes return counts, introspection returns schema only. | [ADR-004](adr/ADR-004-no-row-values-in-prompts.md) |
+| D2 · OAuth scopes | `projects:read`, `database:read`, `rest:read`, `storage:read`, plus a client-side endpoint allowlist | [ADR-005](adr/ADR-005-supabase-oauth-scopes.md) |
+| D3 · Unprotected repos | Fix PRs only where GitHub enforces a non-bypassable review ruleset on the default branch. Everyone else gets reviewed SQL and steps. | [ADR-006](adr/ADR-006-github-fixes-on-protected-repos.md) |
+| D4 · Where validation runs | A self-contained validator image on its own Cloud Run Job, with no Docker daemon, no secrets and no egress. Spike first in Phase 5. | [ADR-007](adr/ADR-007-fix-validation-runtime.md) |
+| D5 · Free-plan projects | Two free projects in separate orgs: the control plane, and one testbed with planted and clean tables | [ADR-008](adr/ADR-008-test-environment.md) |
+| D6 · License | Apache-2.0 | [ADR-009](adr/ADR-009-license.md) |
 
 ## Residual risks we accept (for now)
 
 - **R1:** `database:read` can read every table. The guarantee that Postern doesn't is in code
   (TM-01), not in the credential.
-- **R2:** On repos without branch protection, invariant 3 rests on Postern's push gate
-  (TM-08), not on GitHub. See D3.
+- **R2:** GitHub App permissions are per repo, so the App's private key can mint a token for
+  any repo the user installed it on, protected or not. Postern never mints one for an
+  unverified repo (TM-08, ADR-006), but on unprotected repos that guarantee is Postern's
+  code, not GitHub.
 - **R3:** The owner role of Postern's own database can drop audit triggers. The hash chain,
   plus a chain head anchored in BigQuery, detects this but can't prevent it.
 - **R4:** Prompt injection can't be prevented, only made powerless: no grant change, no
@@ -885,6 +917,9 @@ Deploy rights mean control of every Postern credential.
   worse, which TM-14's templating and judge gate address.
 - **R5:** The validation stack is built from repo migrations, which may not match production.
   The post-merge re-probe (TM-21) is the backstop.
+- **R6:** The validator is lower fidelity than a full local Supabase stack. There is no auth
+  server or storage API, so owner-scoped reads use locally minted JWTs and storage fixes are
+  checked at the SQL level (ADR-007). The post-merge re-probe is the backstop.
 
 ## Assumptions to verify, by phase
 
@@ -894,7 +929,14 @@ Deploy rights mean control of every Postern credential.
 | Which read scope lists an OAuth user's projects and organizations | Phase 3 |
 | Whether Supabase OAuth refresh tokens rotate, which affects concurrent workers | Phase 3 |
 | What `supabase_read_only_user` can and can't do (writes, `SET ROLE`, functions with side effects) | Phase 3–4 |
-| GitHub ruleset availability by plan, and whether an App can read a repo's effective rules with `metadata: read` | Phase 5 |
+| Whether an App's installation token can see its own bypass status on a ruleset (`current_user_can_bypass`) with only `metadata: read` | Phase 5 |
+| Supabase's Postgres image runs as a Cloud Run Job within memory limits, and the cheapest way to deny the validator egress | Phase 5 |
 | Resend webhook signature scheme | Phase 6 |
 | MCP elicitation support in the official Python SDK | Phase 6 |
-| Supabase free-plan project limit and pause policy | Phase 1 |
+
+Verified on 2026-10-13:
+
+- **Supabase free plan:** two free projects per user, counted across every organization
+  where they are Owner or Administrator. Paused projects don't count.
+- **GitHub rulesets:** available on GitHub Free only for public repos (Pro, Team and
+  Enterprise for private ones). "Get rules for a branch" needs only `metadata: read`.

@@ -28,3 +28,12 @@ def test_supabase_token_cannot_read_api_keys() -> None:
     """A live test confirms a real Postern token gets a refusal from GET /v1/projects/{ref}/api-
     keys."""
     raise NotImplementedError
+
+
+@pytest.mark.xfail(
+    raises=NotImplementedError, strict=True, reason="TM-06 · prevention lands in Phase 3"
+)
+def test_supabase_client_calls_only_allowlisted_endpoints() -> None:
+    """The Supabase client implements only allowlisted GET endpoints. Endpoints inside a granted
+    scope that Postern doesn't need (SQL snippets, backups, pooler config) aren't callable."""
+    raise NotImplementedError

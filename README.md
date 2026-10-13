@@ -8,7 +8,7 @@ row-level security. Postern watches for that door, and for health and performanc
 and turns what it finds into tested fixes that a human approves. Postern holds no credential
 that could open the door itself.
 
-> **Status: Phase 0 (threat model, ADRs, scaffolding).** Nothing runs yet. See
+> **Status: Phase 0 complete (threat model, ADRs, scaffolding).** Nothing runs yet. See
 > [PHASE_PROMPTS.md](PHASE_PROMPTS.md) for the build plan.
 
 ## What "read-only by construction" means
@@ -16,13 +16,15 @@ that could open the door itself.
 Safety is enforced by credentials, database constraints and code. It does not depend on
 prompts asking a model to behave.
 
-- **Supabase:** OAuth with read-only scopes only. Postern never requests, accepts or stores a
-  `service_role` key, a secret API key or a database password.
+- **Supabase:** OAuth with four read-only scopes (`projects:read`, `database:read`,
+  `rest:read`, `storage:read`). Postern never requests, accepts or stores a `service_role`
+  key, a secret API key or a database password.
 - **Exposure checks:** use only the public (publishable/anon) key you paste in, which your app
   already ships to every browser. Postern records table name, HTTP status, a capped row count
   and a timestamp. It never stores your rows.
-- **GitHub:** Postern can only push to `postern/*` branches and open pull requests. A human
-  always merges.
+- **GitHub:** Postern only pushes `postern/*` branches and opens pull requests on repos where
+  GitHub itself requires a human-approved review before merging. Everywhere else you get
+  reviewed SQL and step-by-step instructions instead.
 - **Every agent is registered** with an owner, a tier, explicit tool grants, a human gate and a
   notification budget. Anything outside a grant is refused and written to an append-only
   audit log.
@@ -75,4 +77,4 @@ failures the moment someone implements one without removing the marker.
 
 ## License
 
-Open source. The license is not chosen yet.
+[Apache-2.0](LICENSE). See [ADR-009](docs/adr/ADR-009-license.md).

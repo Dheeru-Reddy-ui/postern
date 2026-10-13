@@ -26,3 +26,12 @@ def test_github_app_has_no_workflows_permission() -> None:
     """The GitHub App manifest doesn't request the workflows permission, so it can't modify
     .github/workflows/."""
     raise NotImplementedError
+
+
+@pytest.mark.xfail(
+    raises=NotImplementedError, strict=True, reason="TM-08 · prevention lands in Phase 5"
+)
+def test_installation_tokens_scoped_to_verified_repos() -> None:
+    """Installation tokens are minted only for verified repos, with only the permissions the push
+    needs."""
+    raise NotImplementedError

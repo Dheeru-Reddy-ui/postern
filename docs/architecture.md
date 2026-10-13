@@ -33,7 +33,7 @@ flowchart LR
 
     CRON --> Q
     Q --> W
-    W -- "OAuth, database:read" --> SP
+    W -- "OAuth, read scopes only (ADR-005)" --> SP
     W -- "anon key · count-only probes" --> REST
     W -- "postern/* branches + PRs" --> GH
     W --> GW --> LLM
@@ -56,9 +56,10 @@ flowchart LR
   4. Every step is checkpointed and audit-logged in the same transaction.
 - **Fix.**
   1. The Fix Drafter writes a migration, which passes the SQL gate.
-  2. It's validated in a throwaway stack. Where that stack runs is decision D4 in the threat
-     model.
-  3. The Drafter pushes to `postern/*` and opens a PR. A human merges.
+  2. It's validated in an isolated validator Job (ADR-007).
+  3. On repos whose default branch GitHub protects (ADR-006), the Drafter pushes to
+     `postern/*` and opens a PR, and a human merges. Everyone else gets reviewed SQL and
+     steps.
   4. A re-probe verifies the exposure is closed.
 - **Contact.** Every message to a user goes through the notification service, which enforces
   the per-person budget, quiet hours and dedupe.
@@ -70,8 +71,8 @@ flowchart LR
 
 The threat model ([threat-model.md](threat-model.md)) is the source of truth. In short:
 
-- **Credentials can't write.** OAuth uses `database:read` only, plus the public anon key for
-  probes. The GitHub App is limited to `postern/*`, with no `workflows` permission.
+- **Credentials can't write.** OAuth uses four read scopes (no `secrets:*`, no `auth:read`),
+  plus the public anon key for probes. The GitHub App is limited to `postern/*`, with no `workflows` permission.
 - **Code gates sit where credentials can't reach:** the policy gate on every tool call, the SQL
   gate on drafted migrations, the push gate on refs and paths, and the statement allowlist on
   read-only SQL.
@@ -86,7 +87,11 @@ The threat model ([threat-model.md](threat-model.md)) is the source of truth. In
 | [ADR-001](adr/ADR-001-agent-runtime.md) | Thin custom agent loop, with LiteLLM only inside the gateway |
 | [ADR-002](adr/ADR-002-queue.md) | pgmq in Postern's Supabase Postgres, one queue per tier |
 | [ADR-003](adr/ADR-003-warehouse-ingestion.md) | BigQuery Storage Write API fed by a Postgres outbox |
+| [ADR-004](adr/ADR-004-no-row-values-in-prompts.md) | Row values never reach an LLM prompt |
+| [ADR-005](adr/ADR-005-supabase-oauth-scopes.md) | Scopes: `projects:read`, `database:read`, `rest:read`, `storage:read`, plus a client-side endpoint allowlist |
+| [ADR-006](adr/ADR-006-github-fixes-on-protected-repos.md) | Fix PRs only on repos where GitHub enforces a non-bypassable review ruleset |
+| [ADR-007](adr/ADR-007-fix-validation-runtime.md) | Validation in a self-contained validator image on its own Cloud Run Job (no Docker, secrets or egress), with a spike first |
+| [ADR-008](adr/ADR-008-test-environment.md) | Two free projects in separate orgs: `postern-control` and a `testbed` with planted and clean tables |
+| [ADR-009](adr/ADR-009-license.md) | Apache-2.0 |
 
-Open (from the threat model): D1 row values in prompts, D2 scope allowlist, D3 unprotected
-repos, D4 where fix validation runs, D5 free-plan project count, D6 license. Also open: what
-starts the worker Job (ADR-002 consequences).
+Still open: what starts the worker Job (ADR-002 consequences, Phase 1–2).

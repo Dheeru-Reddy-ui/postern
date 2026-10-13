@@ -26,3 +26,12 @@ def test_github_client_exposes_no_merge_or_approve_operations() -> None:
 def test_push_gate_rejects_changes_outside_schema_paths() -> None:
     """The push gate only allows changes under the repo's Supabase schema and migration paths."""
     raise NotImplementedError
+
+
+@pytest.mark.xfail(
+    raises=NotImplementedError, strict=True, reason="TM-08 · prevention lands in Phase 5"
+)
+def test_push_requires_verified_default_branch_ruleset() -> None:
+    """Postern pushes only to repos whose default branch has an active ruleset requiring an
+    approved pull request that the App can't bypass, checked at onboarding and before every push."""
+    raise NotImplementedError
