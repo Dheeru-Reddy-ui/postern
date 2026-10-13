@@ -46,3 +46,10 @@ resource "supabase_settings" "control" {
   project_ref     = supabase_project.control.id
   ssl_enforcement = true
 }
+
+# Pooler connection strings (no password inside), so migrations can run with
+# `supabase db push --db-url` instead of `supabase link`. `link` would need the token to
+# read the project's API keys, which the operator token deliberately can't.
+data "supabase_pooler" "control" {
+  project_ref = supabase_project.control.id
+}

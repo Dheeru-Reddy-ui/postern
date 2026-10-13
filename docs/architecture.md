@@ -6,9 +6,9 @@
 
 | Piece | State |
 |---|---|
-| Terraform: GCP project, state bucket, APIs, Artifact Registry, service accounts, secret placeholders, `postern-api`, `postern-worker`, BigQuery `postern` (7 tables + dedup views), WIF, ₹100 budget | Written and validated; applied once the GCP account exists |
-| Terraform: Postern's own Supabase project `postern-control` (us-east-1) | Written and validated; applied after the `postern` org and token exist |
-| pgmq and pg_cron | Migration `supabase/migrations/20261013000000_enable_pgmq_and_pg_cron.sql` |
+| GCP project `postern-prod-8ybj`: state bucket, APIs, Artifact Registry, service accounts, secret placeholders, `postern-api`, `postern-worker`, BigQuery `postern` (7 tables + dedup views), WIF, ₹100 budget | Applied 2026-10-13; `terraform plan` shows no drift |
+| Postern's own Supabase project `postern-control` (ref `bpymxbzldxhsqrvrybyo`, us-east-1, org `postern`) | Applied 2026-10-13, SSL enforced |
+| pgmq 1.5.1 and pg_cron 1.6.4 on `postern-control` (Postgres 17.11) | Migration `20261013000000_enable_pgmq_and_pg_cron.sql` pushed; queues not exposed through the Data API |
 | `postern-api` | FastAPI, `GET /health` only |
 | `postern-worker` | Logs one structured "hello" line and exits |
 | CI/CD | `ci.yml`: checks and image build on every PR; on `main`, deploy via WIF with a smoke test |
