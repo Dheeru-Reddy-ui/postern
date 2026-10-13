@@ -1,6 +1,6 @@
 # ADR-003: Warehouse ingestion
 
-**Status:** Proposed · **Date:** 2026-10-13 · **Decider:** Dheeru
+**Status:** Accepted (Dheeru, 2026-10-13) · **Date:** 2026-10-13 · **Decider:** Dheeru
 
 ## Context
 

@@ -1,6 +1,6 @@
 # ADR-002: Work queue
 
-**Status:** Proposed · **Date:** 2026-10-13 · **Decider:** Dheeru
+**Status:** Accepted (Dheeru, 2026-10-13) · **Date:** 2026-10-13 · **Decider:** Dheeru
 
 ## Context
 

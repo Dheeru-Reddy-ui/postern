@@ -1,6 +1,6 @@
 # ADR-001: Agent runtime
 
-**Status:** Proposed · **Date:** 2026-10-13 · **Decider:** Dheeru
+**Status:** Accepted (Dheeru, 2026-10-13) · **Date:** 2026-10-13 · **Decider:** Dheeru
 
 ## Context
 
