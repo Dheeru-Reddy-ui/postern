@@ -1,0 +1,46 @@
+# Secrets: never commit (CLAUDE.md). Only *.example files with placeholder values.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*service-account*.json
+*credentials*.json
+*.tfvars
+!*.tfvars.example
+
+# Python / uv
+__pycache__/
+*.py[cod]
+.venv/
+build/
+dist/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfplan
+
+# Supabase CLI
+supabase/.branches/
+supabase/.temp/
+
+# Web
+node_modules/
+.next/
+.vercel/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

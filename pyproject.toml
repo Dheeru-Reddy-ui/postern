@@ -1,0 +1,105 @@
+[project]
+name = "postern"
+version = "0.0.0"
+description = "Governed agents that guard your Supabase app. Read-only by construction."
+readme = "README.md"
+authors = [{ name = "Dheeru Reddy" }]
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.11.28,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "postern"
+module-root = ""
+
+# --------------------------------------------------------------------------- ruff
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["web"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",  # pycodestyle, pyflakes
+    "I",            # isort
+    "N",            # pep8-naming
+    "UP",           # pyupgrade
+    "B",            # bugbear
+    "S",            # bandit
+    "C4",           # comprehensions
+    "DTZ",          # timezone-aware datetimes (quiet hours, nightly schedules)
+    "SIM",          # simplify
+    "PT",           # pytest style
+    "TID",          # tidy imports, incl. banned-api below
+    "RUF",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+# Invariant 6: the gateway is the only module allowed to import an LLM provider SDK.
+"postern/llm/gateway.py" = ["TID251"]
+# Invariant 9: only the notification service may import a messaging client.
+"postern/integrations/notify/**" = ["TID251"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+# Lint-time backstop for invariants 6 and 9. The tests named in docs/threat-model.md
+# (TM-11, TM-13) are the proof; this catches violations before they reach review.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"litellm".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
+"openai".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
+"anthropic".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
+"google.genai".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
+"google.generativeai".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
+"vertexai".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
+"mistralai".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
+"cohere".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
+"resend".msg = "Invariant 9: users are contacted only through postern/integrations/notify."
+"slack_sdk".msg = "Invariant 9: users are contacted only through postern/integrations/notify."
+
+# --------------------------------------------------------------------------- mypy
+
+[tool.mypy]
+python_version = "3.12"
+files = ["postern", "tests"]
+check_untyped_defs = true
+strict_equality = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+# CLAUDE.md: mypy strict on postern/core. `strict` is global-only in mypy, so the
+# strict flag set is spelled out per module.
+[[tool.mypy.overrides]]
+module = ["postern.core", "postern.core.*"]
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+warn_return_any = true
+no_implicit_reexport = true
+extra_checks = true
+
+# --------------------------------------------------------------------------- pytest
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
+# Every pending threat-model test is xfail; a pass without removing the marker fails the build.
+xfail_strict = true
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "pre-commit>=4.7.0",
+    "pytest>=9.1.1",
+    "ruff>=0.17.0",
+]

@@ -1,0 +1,50 @@
+# Python tools run through `uv run --frozen` so hooks, CI and local runs use the exact
+# versions in uv.lock.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # frozen: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: detect-private-key
+
+  - repo: local
+    hooks:
+      - id: forbid-env-files
+        name: forbid .env files
+        language: fail
+        entry: "CLAUDE.md: never commit .env files. Use .env.example with placeholder values."
+        files: '(^|/)\.env(\..+)?$'
+        exclude: '(^|/)\.env\.example$'
+
+      - id: uv-lock-check
+        name: uv.lock matches pyproject.toml
+        language: system
+        entry: uv lock --check
+        files: ^(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
+
+      - id: ruff-check
+        name: ruff check
+        language: system
+        entry: uv run --frozen ruff check --fix
+        types_or: [python, pyi]
+
+      - id: ruff-format
+        name: ruff format
+        language: system
+        entry: uv run --frozen ruff format
+        types_or: [python, pyi]
+
+      - id: mypy
+        name: mypy
+        language: system
+        entry: uv run --frozen mypy
+        types_or: [python, pyi]
+        pass_filenames: false
