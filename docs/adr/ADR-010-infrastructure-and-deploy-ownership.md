@@ -1,6 +1,6 @@
 # ADR-010: Infrastructure layout and deploy ownership
 
-**Status:** Proposed · **Date:** 2026-10-13 · **Decider:** Dheeru
+**Status:** Accepted (Dheeru, 2026-10-14) · **Date:** 2026-10-13 · **Decider:** Dheeru
 
 ## Context
 

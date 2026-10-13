@@ -4,7 +4,7 @@ All notable changes to Postern are recorded here, one section per phase.
 
 ## [Unreleased]
 
-### Phase 1: GCP and Supabase infrastructure as code (all "Done when" checks met; awaiting Dheeru's sign-off)
+### Phase 1: GCP and Supabase infrastructure as code (complete, signed off by Dheeru 2026-10-14)
 
 **Applied 2026-10-13/14:**
 - GCP project `postern-prod-8ybj`, with state in `gs://postern-prod-8ybj-tfstate`.

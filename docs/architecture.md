@@ -117,6 +117,6 @@ The threat model ([threat-model.md](threat-model.md)) is the source of truth. In
 | [ADR-007](adr/ADR-007-fix-validation-runtime.md) | Validation in a self-contained validator image on its own Cloud Run Job (no Docker, secrets or egress), with a spike first |
 | [ADR-008](adr/ADR-008-test-environment.md) | Two free projects in separate orgs: `postern-control` and a `testbed` with planted and clean tables |
 | [ADR-009](adr/ADR-009-license.md) | Apache-2.0 |
-| [ADR-010](adr/ADR-010-infrastructure-and-deploy-ownership.md) | Three Terraform roots; Terraform owns shape, CI owns images (Proposed) |
+| [ADR-010](adr/ADR-010-infrastructure-and-deploy-ownership.md) | Three Terraform roots; Terraform owns shape, CI owns images |
 
 Still open: what starts the worker Job (ADR-002 consequences, Phase 1–2).
