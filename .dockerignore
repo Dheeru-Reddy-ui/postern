@@ -1,0 +1,7 @@
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!LICENSE
+!postern/
+**/__pycache__

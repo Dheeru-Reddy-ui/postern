@@ -1,0 +1,80 @@
+[
+  {
+    "name": "event_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "UUID assigned when the event is written to Postgres's warehouse_outbox. The *_dedup views keep one row per event_id."
+  },
+  {
+    "name": "event_ts",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "When the event happened in the control plane (UTC). Day partitions use this column."
+  },
+  {
+    "name": "run_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Run UUID. Matches runs.id in Postgres and run_id in the audit log."
+  },
+  {
+    "name": "agent",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Registered agent name from agents/registry.yaml, e.g. security_sentinel."
+  },
+  {
+    "name": "tier",
+    "type": "INTEGER",
+    "mode": "REQUIRED",
+    "description": "Agent tier: 0 read and report, 1 draft, 2 contact, 3 meta."
+  },
+  {
+    "name": "from_status",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "State before this transition; null for the first row of a run."
+  },
+  {
+    "name": "to_status",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "State after this transition: queued, running, awaiting_human, completed, failed or rolled_back."
+  },
+  {
+    "name": "trigger",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "What started the run: schedule, webhook, human, eval or replay."
+  },
+  {
+    "name": "idempotency_key",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Unique key that stops duplicate runs (TM-18)."
+  },
+  {
+    "name": "attempt",
+    "type": "INTEGER",
+    "mode": "REQUIRED",
+    "description": "Delivery attempt of the queue message that drove this transition (pgmq read_ct)."
+  },
+  {
+    "name": "error_code",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Machine-readable failure reason when to_status is failed. Never free text from user data."
+  },
+  {
+    "name": "user_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Postern account ID (UUID). Never an email or a name."
+  },
+  {
+    "name": "connection_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "ID of the connection (one connected Supabase project) the event concerns."
+  }
+]

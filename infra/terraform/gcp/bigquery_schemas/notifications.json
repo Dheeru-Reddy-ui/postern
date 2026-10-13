@@ -1,0 +1,86 @@
+[
+  {
+    "name": "event_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "UUID assigned when the event is written to Postgres's warehouse_outbox. The *_dedup views keep one row per event_id."
+  },
+  {
+    "name": "event_ts",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "When the event happened in the control plane (UTC). Day partitions use this column."
+  },
+  {
+    "name": "notification_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Notification UUID in Postgres."
+  },
+  {
+    "name": "event_kind",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "queued, sent, suppressed, delivered, bounced, opened, clicked, muted or dismissed."
+  },
+  {
+    "name": "channel",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "email, slack or mcp."
+  },
+  {
+    "name": "kind",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "realtime_alert, weekly_digest or transactional."
+  },
+  {
+    "name": "suppression_reason",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "budget, quiet_hours or duplicate, when event_kind is suppressed (TM-13)."
+  },
+  {
+    "name": "dedupe_key",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Unique key that stops duplicate messages (TM-18)."
+  },
+  {
+    "name": "finding_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Finding the message is about, for real-time alerts."
+  },
+  {
+    "name": "template",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Template name. Message text is rendered from templates and not stored here."
+  },
+  {
+    "name": "template_version",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Template version, so wording changes can be compared."
+  },
+  {
+    "name": "provider_message_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "ID returned by Resend or Slack, for delivery tracking."
+  },
+  {
+    "name": "user_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Postern account ID (UUID). Never an email or a name."
+  },
+  {
+    "name": "connection_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "ID of the connection (one connected Supabase project) the event concerns."
+  }
+]

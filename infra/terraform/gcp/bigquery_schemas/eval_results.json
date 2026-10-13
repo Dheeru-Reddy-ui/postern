@@ -1,0 +1,104 @@
+[
+  {
+    "name": "event_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "UUID assigned when the event is written to Postgres's warehouse_outbox. The *_dedup views keep one row per event_id."
+  },
+  {
+    "name": "event_ts",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "When the event happened in the control plane (UTC). Day partitions use this column."
+  },
+  {
+    "name": "eval_run_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "One evaluation run: a CI job or one online-eval batch."
+  },
+  {
+    "name": "suite",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "golden, safety, judge, calibration or online."
+  },
+  {
+    "name": "case_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Case ID within the suite."
+  },
+  {
+    "name": "case_version",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Version of the case, so changed cases are not compared with old results."
+  },
+  {
+    "name": "trial",
+    "type": "INTEGER",
+    "mode": "REQUIRED",
+    "description": "Trial number, 1 to k (k = 3 for nondeterministic cases)."
+  },
+  {
+    "name": "agent",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Agent under evaluation."
+  },
+  {
+    "name": "model",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Model used for this trial."
+  },
+  {
+    "name": "prompt_version",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Hash of the agent's prompts at evaluation time."
+  },
+  {
+    "name": "git_sha",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Commit evaluated (CI runs)."
+  },
+  {
+    "name": "git_ref",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Branch or PR ref evaluated (CI runs)."
+  },
+  {
+    "name": "passed",
+    "type": "BOOLEAN",
+    "mode": "REQUIRED",
+    "description": "Whether every behavioral assertion for the case passed."
+  },
+  {
+    "name": "failure_reason",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "First failed assertion, when passed is false."
+  },
+  {
+    "name": "judge_scores",
+    "type": "JSON",
+    "mode": "NULLABLE",
+    "description": "Rubric scores from the LLM judge, keyed by rubric dimension (1-5)."
+  },
+  {
+    "name": "cost_usd",
+    "type": "NUMERIC",
+    "mode": "NULLABLE",
+    "description": "LLM cost of the trial."
+  },
+  {
+    "name": "duration_ms",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "Wall-clock duration of the trial."
+  }
+]

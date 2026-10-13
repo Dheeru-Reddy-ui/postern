@@ -4,6 +4,33 @@ All notable changes to Postern are recorded here, one section per phase.
 
 ## [Unreleased]
 
+### Phase 1: GCP and Supabase infrastructure as code (in progress)
+
+- **Terraform roots** `infra/terraform/gcp/bootstrap`, `gcp` and `supabase` (ADR-010):
+  - the project, a private versioned state bucket and the APIs Postern needs;
+  - Artifact Registry with cleanup policies;
+  - service accounts for api, worker and deployer;
+  - eight Secret Manager placeholders, whose access comes from `secret_access.json`;
+  - `postern-api` and `postern-worker` with cost ceilings;
+  - BigQuery `postern` with seven documented, day-partitioned tables and dedup views;
+  - GitHub Workload Identity Federation pinned to `ci.yml` on `main`;
+  - the ₹100 budget, plus an optional ₹1 test budget;
+  - Postern's own Supabase project with SSL enforced.
+- **Supabase CLI config,** a declarative schema and a migration enabling pgmq and pg_cron.
+- **Hello world:** `python -m postern` runs the API (`GET /health`) or the worker, depending on
+  `POSTERN_COMPONENT`. A multi-stage, digest-pinned, non-root Dockerfile.
+- **CI** builds the image on every PR. A deploy job (WIF, by digest, with a smoke test) runs on
+  `main` once the `GCP_*` repository variables exist.
+- **Runbooks:** `infra-setup.md`, `supabase-setup.md` and `deploy-and-rollback.md`.
+- **Threat-model tests now real:**
+  - TM-05: secret boundaries, and the state bucket is private
+  - TM-07: no user credential names in config
+  - TM-12: cost ceilings
+  - TM-29: no service-account keys, and WIF is restricted
+- **Tests treat warnings as errors.** Starlette's test client now uses `httpx2`.
+- **ADR-005 and the threat model corrected:** the Supabase API returns auth-config secrets as
+  hashes, not plaintext. `auth:read` stays excluded.
+
 ### Phase 0: threat model, ADRs and scaffolding
 
 - **Repo layout** from `CLAUDE.md`: empty `postern` packages, plus `evals/`, `infra/terraform/`,

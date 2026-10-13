@@ -1,0 +1,122 @@
+[
+  {
+    "name": "event_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "UUID assigned when the event is written to Postgres's warehouse_outbox. The *_dedup views keep one row per event_id."
+  },
+  {
+    "name": "event_ts",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "When the event happened in the control plane (UTC). Day partitions use this column."
+  },
+  {
+    "name": "call_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "UUID of this LLM call, assigned by the gateway."
+  },
+  {
+    "name": "run_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Run that made the call (invariant 6)."
+  },
+  {
+    "name": "step_index",
+    "type": "INTEGER",
+    "mode": "REQUIRED",
+    "description": "Step within the run that made the call."
+  },
+  {
+    "name": "agent",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Agent that made the call; cost is attributed to it."
+  },
+  {
+    "name": "provider",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "LLM provider as reported by LiteLLM."
+  },
+  {
+    "name": "model",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Exact model ID that answered."
+  },
+  {
+    "name": "is_fallback",
+    "type": "BOOLEAN",
+    "mode": "REQUIRED",
+    "description": "True when the primary model failed and the fallback model answered."
+  },
+  {
+    "name": "prompt",
+    "type": "JSON",
+    "mode": "REQUIRED",
+    "description": "Messages sent, exactly as logged by the gateway. Schema metadata only, never user row values (ADR-004)."
+  },
+  {
+    "name": "response",
+    "type": "JSON",
+    "mode": "NULLABLE",
+    "description": "Model response as logged by the gateway; null if the call failed."
+  },
+  {
+    "name": "tool_calls",
+    "type": "JSON",
+    "mode": "NULLABLE",
+    "description": "Tool calls the model requested, before the policy gate checked them."
+  },
+  {
+    "name": "input_tokens",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "Prompt tokens billed."
+  },
+  {
+    "name": "output_tokens",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "Completion tokens billed."
+  },
+  {
+    "name": "cost_usd",
+    "type": "NUMERIC",
+    "mode": "NULLABLE",
+    "description": "Cost of this call in USD, from the gateway's pricing table."
+  },
+  {
+    "name": "latency_ms",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "Time from request to complete response."
+  },
+  {
+    "name": "status",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "ok, error, or refused_budget when the monthly cap blocked the call (TM-11)."
+  },
+  {
+    "name": "error_code",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Provider or gateway error code when status is not ok."
+  },
+  {
+    "name": "user_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Postern account ID (UUID). Never an email or a name."
+  },
+  {
+    "name": "connection_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "ID of the connection (one connected Supabase project) the event concerns."
+  }
+]

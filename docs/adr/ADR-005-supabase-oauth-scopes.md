@@ -34,7 +34,7 @@ Explicitly excluded:
 |---|---|
 | every `*:write` | Invariant 1 |
 | `secrets:read` and `secrets:write` | Invariant 2. `GET /v1/projects/{ref}/api-keys` is `secrets:read`. |
-| `auth:read` | The auth config response schema includes `smtp_pass`, every OAuth provider's client secret, and auth-hook secrets |
+| `auth:read` | The auth config includes fields for `smtp_pass`, every OAuth provider's client secret, and auth-hook secrets. The API returns them as hashes, not plaintext (per the Supabase Terraform provider docs), but Postern has no need for auth config, so it stays excluded until an ADR shows one. |
 | `organizations:read` | Not needed to list projects, and it includes organization member lists (personal data) |
 | `edge_functions:read`, `analytics:read`, `domains:read`, `environment:read` | Not needed yet. Function source could contain hard-coded secrets, so it needs its own ADR first. |
 

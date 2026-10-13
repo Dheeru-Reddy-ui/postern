@@ -1,7 +1,30 @@
 # Postern architecture
 
-**Status:** Phase 0. This describes the planned system. Nothing below is built yet except the
-repo scaffold and CI. Each phase updates this file.
+**Status:** Phase 1 (infrastructure as code). Each phase updates this file.
+
+## What exists now
+
+| Piece | State |
+|---|---|
+| Terraform: GCP project, state bucket, APIs, Artifact Registry, service accounts, secret placeholders, `postern-api`, `postern-worker`, BigQuery `postern` (7 tables + dedup views), WIF, ₹100 budget | Written and validated; applied once the GCP account exists |
+| Terraform: Postern's own Supabase project `postern-control` (us-east-1) | Written and validated; applied after the `postern` org and token exist |
+| pgmq and pg_cron | Migration `supabase/migrations/20261013000000_enable_pgmq_and_pg_cron.sql` |
+| `postern-api` | FastAPI, `GET /health` only |
+| `postern-worker` | Logs one structured "hello" line and exits |
+| CI/CD | `ci.yml`: checks and image build on every PR; on `main`, deploy via WIF with a smoke test |
+
+**Identities and secrets** (`infra/terraform/gcp/secret_access.json` is the single source):
+
+| Service account | Can read | Other grants |
+|---|---|---|
+| `postern-api` | supabase-oauth-client-secret, github-webhook-secret, token-encryption-key, control-plane-db-url-api | none |
+| `postern-worker` | llm-api-key, control-plane-db-url-worker | BigQuery dataEditor on dataset `postern` |
+| `postern-deployer` | none | Artifact Registry writer (repo), Cloud Run developer (project), actAs api and worker; impersonable only from `ci.yml` on `main` |
+
+`github-app-private-key` and `resend-api-key` have no reader until the Tier 1 and Tier 2
+components get their own service accounts (Phases 5 and 6).
+
+The rest of this document describes the target system.
 
 ## Components
 
@@ -93,5 +116,6 @@ The threat model ([threat-model.md](threat-model.md)) is the source of truth. In
 | [ADR-007](adr/ADR-007-fix-validation-runtime.md) | Validation in a self-contained validator image on its own Cloud Run Job (no Docker, secrets or egress), with a spike first |
 | [ADR-008](adr/ADR-008-test-environment.md) | Two free projects in separate orgs: `postern-control` and a `testbed` with planted and clean tables |
 | [ADR-009](adr/ADR-009-license.md) | Apache-2.0 |
+| [ADR-010](adr/ADR-010-infrastructure-and-deploy-ownership.md) | Three Terraform roots; Terraform owns shape, CI owns images (Proposed) |
 
 Still open: what starts the worker Job (ADR-002 consequences, Phase 1–2).

@@ -1,0 +1,86 @@
+[
+  {
+    "name": "event_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "UUID assigned when the event is written to Postgres's warehouse_outbox. The *_dedup views keep one row per event_id."
+  },
+  {
+    "name": "event_ts",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "When the event happened in the control plane (UTC). Day partitions use this column."
+  },
+  {
+    "name": "run_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Run this step belongs to."
+  },
+  {
+    "name": "agent",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Agent that took the step."
+  },
+  {
+    "name": "step_index",
+    "type": "INTEGER",
+    "mode": "REQUIRED",
+    "description": "Zero-based position of the checkpoint within the run."
+  },
+  {
+    "name": "step_kind",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "llm_call, tool_call or final."
+  },
+  {
+    "name": "tool_name",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Tool requested in this step, when step_kind is tool_call."
+  },
+  {
+    "name": "status",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "completed, refused (policy gate), failed or skipped_on_resume."
+  },
+  {
+    "name": "refusal_reason",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Why the policy gate refused the call, e.g. tool_not_in_grant (TM-02)."
+  },
+  {
+    "name": "input_hash",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "SHA-256 of the step input, as checkpointed. Replay compares these."
+  },
+  {
+    "name": "output_hash",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "SHA-256 of the step output; null if the step did not complete."
+  },
+  {
+    "name": "duration_ms",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "Wall-clock duration of the step."
+  },
+  {
+    "name": "user_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Postern account ID (UUID). Never an email or a name."
+  },
+  {
+    "name": "connection_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "ID of the connection (one connected Supabase project) the event concerns."
+  }
+]

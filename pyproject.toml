@@ -7,7 +7,10 @@ authors = [{ name = "Dheeru Reddy" }]
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "fastapi>=0.143.0",
+    "uvicorn>=0.54.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.28,<0.12.0"]
@@ -97,11 +100,15 @@ testpaths = ["tests"]
 addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
 # Every pending threat-model test is xfail; a pass without removing the marker fails the build.
 xfail_strict = true
+# Deprecations surface as failures, not scrollback.
+filterwarnings = ["error"]
 
 [dependency-groups]
 dev = [
+    "httpx2>=2.13.1",
     "mypy>=2.4.0",
     "pre-commit>=4.7.0",
     "pytest>=9.1.1",
+    "python-hcl2>=8.1.4",
     "ruff>=0.17.0",
 ]

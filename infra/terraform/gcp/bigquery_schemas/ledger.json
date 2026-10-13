@@ -1,0 +1,74 @@
+[
+  {
+    "name": "event_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "UUID assigned when the event is written to Postgres's warehouse_outbox. The *_dedup views keep one row per event_id."
+  },
+  {
+    "name": "event_ts",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "When the event happened in the control plane (UTC). Day partitions use this column."
+  },
+  {
+    "name": "entry_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Ledger entry UUID."
+  },
+  {
+    "name": "finding_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Finding this entry tracks."
+  },
+  {
+    "name": "fingerprint",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Finding fingerprint, so value survives a finding being reopened."
+  },
+  {
+    "name": "stage",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "found, proposed, merged, verified_closed, declined or rolled_back."
+  },
+  {
+    "name": "issue_type",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Finding type used to look up the value model constant."
+  },
+  {
+    "name": "minutes_absorbed",
+    "type": "NUMERIC",
+    "mode": "NULLABLE",
+    "description": "Engineer minutes this stage saved, from docs/value-model.md (Phase 7)."
+  },
+  {
+    "name": "value_model_version",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Version of docs/value-model.md the constant came from."
+  },
+  {
+    "name": "proposal_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Fix proposal, for proposed and later stages."
+  },
+  {
+    "name": "user_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Postern account ID (UUID). Never an email or a name."
+  },
+  {
+    "name": "connection_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "ID of the connection (one connected Supabase project) the event concerns."
+  }
+]

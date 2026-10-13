@@ -1,0 +1,10 @@
+# Copy to terraform.tfvars (gitignored) and fill in.
+project_id      = "postern-prod-xxxx"
+billing_account = "XXXXXX-XXXXXX-XXXXXX"
+
+# Must match the billing account's currency (`gcloud billing accounts describe`).
+budget_currency = "INR"
+budget_amount   = 100
+
+# Set to true only while verifying the budget alert email, then back to false.
+test_budget_enabled = false

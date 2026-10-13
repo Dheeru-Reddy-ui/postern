@@ -47,3 +47,65 @@ jobs:
           # ruff and mypy already ran above.
           SKIP: ruff-check,ruff-format,mypy
         run: uv run --locked pre-commit run --all-files --show-diff-on-failure
+
+      # Catch Dockerfile breakage on every PR, before anything reaches the deploy job.
+      - name: Build image
+        run: docker build --build-arg GIT_SHA="${GITHUB_SHA}" -t postern:ci .
+
+  # Deploys every push to main once the GCP infrastructure exists. The repository variables
+  # come from `terraform output` (docs/runbooks/infra-setup.md). Until they're set, this job
+  # is skipped. Authentication is Workload Identity Federation only: no JSON keys (TM-29).
+  deploy:
+    name: deploy
+    needs: checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.GCP_PROJECT_ID != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: deploy-main
+      cancel-in-progress: false
+    env:
+      PROJECT: ${{ vars.GCP_PROJECT_ID }}
+      REGION: us-central1
+      IMAGE: us-central1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/postern/postern
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Build and push image
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+          tag="${IMAGE}:${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker build --build-arg GIT_SHA="${GITHUB_SHA}" -t "${tag}" .
+          docker push "${tag}"
+          # Deploy by digest, never by tag.
+          echo "IMAGE_REF=$(docker inspect --format='{{index .RepoDigests 0}}' "${tag}")" >> "${GITHUB_ENV}"
+
+      - name: Deploy postern-api
+        run: |
+          gcloud run deploy postern-api --image "${IMAGE_REF}" \
+            --project "${PROJECT}" --region "${REGION}" --quiet
+
+      - name: Update postern-worker
+        run: |
+          gcloud run jobs update postern-worker --image "${IMAGE_REF}" \
+            --project "${PROJECT}" --region "${REGION}" --quiet
+
+      - name: Smoke test
+        run: |
+          url="$(gcloud run services describe postern-api --project "${PROJECT}" \
+            --region "${REGION}" --format='value(status.url)')"
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 "${url}/health" \
+            | tee /dev/stderr | grep -q "\"git_sha\":\"${GITHUB_SHA}\""
+          gcloud run jobs execute postern-worker --project "${PROJECT}" --region "${REGION}" --wait

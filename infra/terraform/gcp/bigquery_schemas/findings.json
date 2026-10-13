@@ -1,0 +1,116 @@
+[
+  {
+    "name": "event_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "UUID assigned when the event is written to Postgres's warehouse_outbox. The *_dedup views keep one row per event_id."
+  },
+  {
+    "name": "event_ts",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "When the event happened in the control plane (UTC). Day partitions use this column."
+  },
+  {
+    "name": "finding_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Finding UUID in Postgres."
+  },
+  {
+    "name": "fingerprint",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Stable hash of project, finding type and object; dedupes proposals (TM-18)."
+  },
+  {
+    "name": "run_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Run that created or changed the finding."
+  },
+  {
+    "name": "agent",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Agent that produced the finding."
+  },
+  {
+    "name": "finding_type",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Lint or check name, e.g. rls_disabled_in_public."
+  },
+  {
+    "name": "category",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "security, health or performance."
+  },
+  {
+    "name": "severity",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "critical, high, medium, low or info. Critical requires a confirmed probe (TM-14)."
+  },
+  {
+    "name": "source",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "advisor, splinter_fallback, probe or introspection."
+  },
+  {
+    "name": "object_schema",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Postgres schema of the affected object. Untrusted identifier, stored as data."
+  },
+  {
+    "name": "object_name",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Name of the affected table, view, function or bucket. Untrusted identifier, stored as data."
+  },
+  {
+    "name": "probe_http_status",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "HTTP status of the anonymous probe, when one ran."
+  },
+  {
+    "name": "probe_row_count",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "Rows the anonymous probe could see, capped at 1000 (invariant 4)."
+  },
+  {
+    "name": "probe_confirmed",
+    "type": "BOOLEAN",
+    "mode": "REQUIRED",
+    "description": "True only when a probe confirmed live exposure."
+  },
+  {
+    "name": "status",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "open, proposed, fixed, verified_closed, dismissed or reopened."
+  },
+  {
+    "name": "project_ref",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Supabase project ref. Excluded from published aggregate reports."
+  },
+  {
+    "name": "user_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Postern account ID (UUID). Never an email or a name."
+  },
+  {
+    "name": "connection_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "ID of the connection (one connected Supabase project) the event concerns."
+  }
+]

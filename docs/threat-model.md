@@ -81,8 +81,9 @@ fetched on 2026-10-13. Phase 3 re-verifies them with contract tests against real
 
 The same spec maps every read scope to the endpoints it unlocks:
 
-- `auth:read` returns the auth config, whose schema includes `smtp_pass`, every OAuth
-  provider's client secret, and auth-hook secrets.
+- `auth:read` returns the auth config, which has fields for `smtp_pass`, every OAuth
+  provider's client secret, and auth-hook secrets. The API returns those as hashes, not
+  plaintext.
 - `organizations:read` includes organization member lists.
 - `database:read` also covers saved SQL snippets, backups and pooler configuration.
 
@@ -90,8 +91,8 @@ Consequences:
 
 - **Postern's scopes are `projects:read`, `database:read`, `rest:read` and `storage:read`**
   ([ADR-005](adr/ADR-005-supabase-oauth-scopes.md)). There is no `*:write` scope and no
-  `secrets:*` scope. `auth:read` is excluded because it can return secrets, and
-  `organizations:read` because it returns people.
+  `secrets:*` scope. `auth:read` is excluded because it covers secret-bearing settings Postern
+  doesn't need, and `organizations:read` because it returns people.
 - **Read-only does not mean data-blind.** `supabase_read_only_user` can `SELECT` every table.
   The read-only credential stops writes; it does not stop Postern from seeing rows. TM-01 and
   TM-02 rely on code-level allowlists for that reason.
@@ -276,6 +277,10 @@ without a connection is impossible by schema, so any attempt is an incident.
 - No `.env` files, private keys or secret-shaped strings are committed. Phase 0 adds
   pre-commit hooks for this; the test proves the repo is clean.
   → `tests/credential_audit/test_repo_hygiene.py::test_no_secrets_or_env_files_committed`
+- Terraform state holds Postern's own control-plane database password, so the state bucket is
+  private (uniform access, public access prevention enforced), versioned and protected from
+  deletion ([ADR-010](adr/ADR-010-infrastructure-and-deploy-ownership.md)).
+  → `tests/credential_audit/test_token_storage.py::test_terraform_state_bucket_is_private_and_versioned`
 
 **Detection:** Secret Manager data-access audit logs, and GitHub secret scanning with push
 protection on the public repo.
@@ -453,8 +458,10 @@ A GCP budget alert only notifies; it doesn't stop spending.
 - Terraform declares hard ceilings, and CI checks they are present:
   - Cloud Run max instances
   - Job timeouts and parallelism
-  - BigQuery `maximum_bytes_billed` and partition expiration
+  - BigQuery partition expiration (per-query `maximum_bytes_billed` is set by the warehouse
+    client in Phase 3, since Terraform can't set it per dataset)
   - Artifact Registry cleanup policies
+  - The ₹100 monthly budget, counted before credits
 
   → `tests/invariants/test_cost_ceilings.py::test_terraform_declares_cost_ceilings`
 
@@ -841,7 +848,9 @@ Deploy rights mean control of every Postern credential.
   `main` branch for deploys.
   → `tests/credential_audit/test_gcp_iam.py::test_wif_provider_restricted_to_postern_repo_and_main`
 
-**Detection:** Cloud Audit Logs for IAM changes and deploys outside CI.
+**Detection:** Cloud Audit Logs for IAM changes and deploys outside CI. The live key check in
+docs/runbooks/infra-setup.md (step 7) lists user-managed keys on every Postern service
+account and must print nothing.
 
 **Lands in:** Phase 1.
 
