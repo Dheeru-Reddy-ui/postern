@@ -1,6 +1,33 @@
 # ₹100/month budget (CLAUDE.md). Budgets only notify; they never stop spending (TM-12).
-# With no all_updates_rule, alert emails go to the billing account's administrators and
-# users (Google's default recipients), which is the account owner.
+# Alert emails go to the billing account's administrators and users (Google's default
+# recipients), which is the account owner. Both budgets also publish their current cost to
+# Pub/Sub, so budget status can be read by machines (Phase 7's Platform Auditor) without
+# waiting for an email.
+
+resource "google_pubsub_topic" "budget_alerts" {
+  name       = "postern-budget-alerts"
+  depends_on = [google_project_service.enabled]
+}
+
+# Cloud Billing publishes budget notifications as this Google-managed account.
+resource "google_pubsub_topic_iam_member" "billing_publishes_budget_alerts" {
+  topic  = google_pubsub_topic.budget_alerts.id
+  role   = "roles/pubsub.publisher"
+  member = "serviceAccount:billing-budget-alert@system.gserviceaccount.com"
+}
+
+# Pull subscription for reading budget status by hand (and later by the Platform Auditor).
+# Unacknowledged messages are kept for one day; the subscription never expires.
+resource "google_pubsub_subscription" "budget_alerts_inspect" {
+  name                       = "postern-budget-alerts-inspect"
+  topic                      = google_pubsub_topic.budget_alerts.id
+  ack_deadline_seconds       = 20
+  message_retention_duration = "86400s"
+
+  expiration_policy {
+    ttl = ""
+  }
+}
 
 resource "google_billing_budget" "monthly" {
   billing_account = var.billing_account
@@ -34,6 +61,12 @@ resource "google_billing_budget" "monthly" {
     spend_basis       = "FORECASTED_SPEND"
   }
 
+  all_updates_rule {
+    pubsub_topic                   = google_pubsub_topic.budget_alerts.id
+    schema_version                 = "1.0"
+    disable_default_iam_recipients = false
+  }
+
   depends_on = [google_project_service.enabled]
 }
 
@@ -59,6 +92,12 @@ resource "google_billing_budget" "alert_test" {
 
   threshold_rules {
     threshold_percent = 0.01
+  }
+
+  all_updates_rule {
+    pubsub_topic                   = google_pubsub_topic.budget_alerts.id
+    schema_version                 = "1.0"
+    disable_default_iam_recipients = false
   }
 
   depends_on = [google_project_service.enabled]

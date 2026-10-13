@@ -128,3 +128,14 @@ so normal Cloud Run usage registers even when the net bill is ₹0.
    nothing arrives within 48 hours, check Billing → Reports for this project's cost before
    credits.
 4. Set `test_budget_enabled = false`. Plan, review and apply to remove the test budget.
+
+**Faster evidence, without waiting for the email.** Both budgets also publish their status
+to the Pub/Sub topic `postern-budget-alerts`. Google publishes on its own schedule, often
+within the hour. Read the messages without acknowledging them:
+
+```bash
+gcloud pubsub subscriptions pull postern-budget-alerts-inspect --project <project_id> --limit 10 --format=json
+```
+
+Each message's base64 `data` decodes to JSON with `budgetDisplayName`, `costAmount`,
+`budgetAmount`, `currencyCode` and, once a threshold is crossed, `alertThresholdExceeded`.

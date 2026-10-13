@@ -9,6 +9,7 @@ locals {
     "cloudresourcemanager.googleapis.com", # project IAM
     "iam.googleapis.com",                  # service accounts, WIF pools
     "iamcredentials.googleapis.com",       # WIF service account impersonation
+    "pubsub.googleapis.com",               # budget notifications
     "run.googleapis.com",                  # postern-api, postern-worker
     "secretmanager.googleapis.com",        # secret placeholders
     "serviceusage.googleapis.com",

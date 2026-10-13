@@ -12,6 +12,7 @@
 | `postern-api` | FastAPI, `GET /health` only |
 | `postern-worker` | Logs one structured "hello" line and exits |
 | CI/CD | `ci.yml`: checks and image build on every PR; on `main`, deploy via WIF with a smoke test |
+| Budget notifications | Both budgets email the billing admins and publish their status to Pub/Sub topic `postern-budget-alerts` (pull subscription `postern-budget-alerts-inspect`), for the Phase 7 Platform Auditor |
 
 **Identities and secrets** (`infra/terraform/gcp/secret_access.json` is the single source):
 
