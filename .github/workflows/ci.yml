@@ -15,7 +15,7 @@ concurrency:
 jobs:
   checks:
     name: lint · types · tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       # Actions are pinned to full commit SHAs (threat model TM-28).
