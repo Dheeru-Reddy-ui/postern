@@ -789,7 +789,10 @@ attack.
 ### TM-27 · Postern silently stops watching
 
 Users believe they are protected, but nothing has run because a scheduler failed, a token
-expired, or the free-tier control plane paused.
+expired, or the free-tier control plane paused. The same applies if GCP suspends the project:
+the billing account is a free trial (it must be upgraded to a full account before the trial
+ends, about mid-January 2027), and its primary payment method is manual UPI, so an unpaid
+bill can't be collected automatically.
 
 **Impact:** High.
 

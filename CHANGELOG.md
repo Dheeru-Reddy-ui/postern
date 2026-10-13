@@ -4,7 +4,17 @@ All notable changes to Postern are recorded here, one section per phase.
 
 ## [Unreleased]
 
-### Phase 1: GCP and Supabase infrastructure as code (in progress)
+### Phase 1: GCP and Supabase infrastructure as code (in progress: waiting on the budget-alert email)
+
+**Applied 2026-10-13:**
+- GCP project `postern-prod-8ybj`, with state in `gs://postern-prod-8ybj-tfstate`.
+- Postern's own Supabase project `postern-control` (ref `bpymxbzldxhsqrvrybyo`).
+- pgmq 1.5.1 and pg_cron 1.6.4.
+- Two CI deploys through WIF, with no JSON keys anywhere.
+- No drift in any of the three Terraform roots.
+- Game-day rollback drill done by hand from the runbook
+  (`docs/incidents/2026-10-13-game-day-api-rollback.md`).
+- A temporary ₹1 test budget is live until the alert email arrives.
 
 - **Terraform roots** `infra/terraform/gcp/bootstrap`, `gcp` and `supabase` (ADR-010):
   - the project, a private versioned state bucket and the APIs Postern needs;
