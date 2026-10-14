@@ -39,7 +39,15 @@ jobs:
       - name: Types
         run: uv run --locked mypy
 
+      # A disposable Supabase Postgres with every migration in supabase/migrations applied.
+      # Database tests (control plane, audit log, RLS) run against it; tests/conftest.py fails
+      # the build if it's missing in CI, so they can't be silently skipped.
+      - name: Start a local Supabase database
+        run: npx --yes supabase@2.120.0 db start
+
       - name: Tests
+        env:
+          POSTERN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:55322/postgres
         run: uv run --locked pytest
 
       - name: Repo hygiene

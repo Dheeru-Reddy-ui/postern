@@ -514,7 +514,8 @@ than a missed finding.
 **Detection:** Online evals judge a daily sample. Every user-reported bad message becomes a
 golden case before it is fixed.
 
-**Lands in:** Phase 3 (severity), Phase 4 (gate), Phase 6 (messages).
+**Lands in:** Phase 2 (the severity rule, as a database constraint), Phase 4 (gate), Phase 6
+(messages).
 
 ### TM-15 · False positives
 
@@ -601,7 +602,8 @@ expires. Workers crash, and webhooks are redelivered.
 
 **Detection:** The Phase 3 kill test, and BigQuery views counting duplicate fingerprints.
 
-**Lands in:** Phase 2 (runs), Phase 3 (checkpoints), Phase 5 (proposals), Phase 6 (alerts).
+**Lands in:** Phase 2 (runs, plus the proposal and alert uniqueness constraints), Phase 3
+(checkpoints).
 
 ### TM-19 · Forged and replayed webhooks
 
@@ -739,7 +741,8 @@ requires.
 **Detection:** The audit log links every decision to a user, and a replay shows the gate
 being passed.
 
-**Lands in:** Phase 2, with decisions in Phases 5–6.
+**Lands in:** Phase 2 (the database rules, including owner-only decisions). Phases 5–6 add the
+web and MCP paths, which call the same function.
 
 ### TM-25 · Cross-tenant leakage inside Postern
 

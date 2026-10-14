@@ -4,6 +4,34 @@ All notable changes to Postern are recorded here, one section per phase.
 
 ## [Unreleased]
 
+### Phase 2: control plane (in progress)
+
+- **`postern` schema** (declarative files in `supabase/schemas/`, ADR-011):
+  - users, connections (tokens as envelope ciphertext only), agents, runs, steps, findings,
+    proposals, notifications and ledger;
+  - RLS on every table, with components reading through explicit policies and people
+    reading only their own rows.
+- **Append-only, hash-chained `audit_log`:**
+  - `UPDATE`, `DELETE` and `TRUNCATE` are revoked from every role and blocked by triggers;
+  - SHA-256 chain under an advisory lock, verified in SQL (`postern.verify_audit_chain`) and
+    independently in Python.
+- **Run state machine** enforced by triggers, plus a human gate, plus a commit-time check
+  that every status change has an audit row in the same transaction.
+- **The only write path:** `SECURITY DEFINER` functions (`enqueue_run`, `transition_run`,
+  `record_step`, `record_human_decision`, `write_audit`, `sync_agent`), with idempotent
+  enqueue.
+- **Roles:** `postern_api` and `postern_worker` (still no login).
+- **Queues and schedule:** pgmq queues `tier0`, `tier1`, `tier2`, `meta`; pg_cron job
+  `postern-nightly-runs` (02:17 UTC).
+- **`agents/registry.yaml`** with 7 planned agents plus the `drill_echo` drill agent.
+- **Registry code:** the tool catalog (`postern/core/tools.py`), the validator, and the
+  compiler with `agents/manifests.lock.json`.
+- **CLI:** `postern registry validate|compile|sync`, `postern replay <run_id>`,
+  `postern audit verify`.
+- **15 threat-model tests now real:** TM-14, TM-18 (3), TM-22 (4), TM-23 (3), TM-24 (3),
+  TM-25 (2). CI runs them against a fresh Supabase Postgres.
+- **Local Supabase ports** moved to 55320–55329.
+
 ### Phase 1: GCP and Supabase infrastructure as code (complete, signed off by Dheeru 2026-10-14)
 
 **Applied 2026-10-13/14:**

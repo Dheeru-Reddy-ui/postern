@@ -1,0 +1,280 @@
+{
+  "agents": {
+    "digest_writer": {
+      "manifest": {
+        "agent": "digest_writer",
+        "description": "Writes the weekly digest from findings and the ledger, delivered through the notification service.",
+        "human_gate": false,
+        "manifest_format": 1,
+        "notification_budget": {
+          "digests_per_7_days": 1,
+          "realtime_alerts_per_7_days": 0
+        },
+        "owner": "dheeru",
+        "registry_version": 1,
+        "schedule": null,
+        "status": "planned",
+        "tier": 2,
+        "tier_name": "contact",
+        "tools": [
+          {
+            "description": "Read findings for the connected project.",
+            "name": "findings.read"
+          },
+          {
+            "description": "Read the value ledger.",
+            "name": "ledger.read"
+          },
+          {
+            "description": "Hand a digest to the notification service, which enforces the person's budget.",
+            "name": "notify.send_digest"
+          }
+        ]
+      },
+      "manifest_hash": "aa708a00dc9c3fda882686a955b2feab10eb910b38a4b2773fa6150dc2cfb631"
+    },
+    "drill_echo": {
+      "manifest": {
+        "agent": "drill_echo",
+        "description": "Game-day and drill agent with no tools; used to exercise the run state machine.",
+        "human_gate": true,
+        "manifest_format": 1,
+        "notification_budget": {
+          "digests_per_7_days": 0,
+          "realtime_alerts_per_7_days": 0
+        },
+        "owner": "dheeru",
+        "registry_version": 1,
+        "schedule": null,
+        "status": "active",
+        "tier": 0,
+        "tier_name": "read_and_report",
+        "tools": []
+      },
+      "manifest_hash": "35495de003a4d9d79e6029484efc99d6c5a9577085582612e6c757f7e5410b34"
+    },
+    "fix_drafter": {
+      "manifest": {
+        "agent": "fix_drafter",
+        "description": "Drafts a fix for a finding, validates it in a throwaway database, and opens a pull request a human merges.",
+        "human_gate": true,
+        "manifest_format": 1,
+        "notification_budget": {
+          "digests_per_7_days": 0,
+          "realtime_alerts_per_7_days": 0
+        },
+        "owner": "dheeru",
+        "registry_version": 1,
+        "schedule": null,
+        "status": "planned",
+        "tier": 1,
+        "tier_name": "draft",
+        "tools": [
+          {
+            "description": "Read findings for the connected project.",
+            "name": "findings.read"
+          },
+          {
+            "description": "Open a pull request from a postern/* branch. A human merges.",
+            "name": "github.open_pull_request"
+          },
+          {
+            "description": "Push a commit to a postern/* branch on a verified repo.",
+            "name": "github.push_postern_branch"
+          },
+          {
+            "description": "Record a drafted fix and its validation.",
+            "name": "proposals.record"
+          },
+          {
+            "description": "Validate a drafted migration in the throwaway validator (ADR-007).",
+            "name": "sandbox.validate_fix"
+          }
+        ]
+      },
+      "manifest_hash": "a1e64b9dbdb69eff82c00f883c55cb5aa4b53472935c61d8c5068bf79132d29d"
+    },
+    "health_investigator": {
+      "manifest": {
+        "agent": "health_investigator",
+        "description": "Reports project health problems such as a paused project or failing checks.",
+        "human_gate": false,
+        "manifest_format": 1,
+        "notification_budget": {
+          "digests_per_7_days": 0,
+          "realtime_alerts_per_7_days": 0
+        },
+        "owner": "dheeru",
+        "registry_version": 1,
+        "schedule": "nightly",
+        "status": "planned",
+        "tier": 0,
+        "tier_name": "read_and_report",
+        "tools": [
+          {
+            "description": "Record a finding for the connected project.",
+            "name": "findings.record"
+          },
+          {
+            "description": "Read the connected project's metadata and health.",
+            "name": "supabase.project.read"
+          },
+          {
+            "description": "Read schema shape: tables, columns, exposed schemas, storage bucket flags.",
+            "name": "supabase.schema.read"
+          }
+        ]
+      },
+      "manifest_hash": "11d8ae5fbee345a7bfd2e1ef1ee2dd16e6c8d0871c6a50a4b961e62fa929e9b5"
+    },
+    "performance_tuner": {
+      "manifest": {
+        "agent": "performance_tuner",
+        "description": "Reports performance problems such as missing indexes and slow policies.",
+        "human_gate": false,
+        "manifest_format": 1,
+        "notification_budget": {
+          "digests_per_7_days": 0,
+          "realtime_alerts_per_7_days": 0
+        },
+        "owner": "dheeru",
+        "registry_version": 1,
+        "schedule": "nightly",
+        "status": "planned",
+        "tier": 0,
+        "tier_name": "read_and_report",
+        "tools": [
+          {
+            "description": "Record a finding for the connected project.",
+            "name": "findings.record"
+          },
+          {
+            "description": "Read the project's performance advisor lints.",
+            "name": "supabase.advisors.performance"
+          },
+          {
+            "description": "Read the connected project's metadata and health.",
+            "name": "supabase.project.read"
+          },
+          {
+            "description": "Run one reviewed, allowlisted catalog query through the read-only endpoint.",
+            "name": "supabase.query.allowlisted"
+          },
+          {
+            "description": "Read schema shape: tables, columns, exposed schemas, storage bucket flags.",
+            "name": "supabase.schema.read"
+          }
+        ]
+      },
+      "manifest_hash": "d711678b2a9f2612779aadc6b8d8892388d17c95965d5b3b93fe18c609dc97d6"
+    },
+    "platform_auditor": {
+      "manifest": {
+        "agent": "platform_auditor",
+        "description": "Reads Postern's own metrics and logs and opens issues on Postern's own repository.",
+        "human_gate": false,
+        "manifest_format": 1,
+        "notification_budget": {
+          "digests_per_7_days": 0,
+          "realtime_alerts_per_7_days": 0
+        },
+        "owner": "dheeru",
+        "registry_version": 1,
+        "schedule": "daily",
+        "status": "planned",
+        "tier": 3,
+        "tier_name": "meta",
+        "tools": [
+          {
+            "description": "Open an issue on Postern's own repository only.",
+            "name": "github.open_issue_postern_repo"
+          },
+          {
+            "description": "Read Postern's own logs.",
+            "name": "postern.logs.read"
+          },
+          {
+            "description": "Read Postern's own metrics.",
+            "name": "postern.metrics.read"
+          }
+        ]
+      },
+      "manifest_hash": "119e6fa561e501844f6ea02604bf6a868dce447db76f1edff6e57e90a74c0e44"
+    },
+    "security_sentinel": {
+      "manifest": {
+        "agent": "security_sentinel",
+        "description": "Finds exposed tables and other security problems, and confirms live exposure with a count-only probe.",
+        "human_gate": false,
+        "manifest_format": 1,
+        "notification_budget": {
+          "digests_per_7_days": 0,
+          "realtime_alerts_per_7_days": 0
+        },
+        "owner": "dheeru",
+        "registry_version": 1,
+        "schedule": "nightly",
+        "status": "planned",
+        "tier": 0,
+        "tier_name": "read_and_report",
+        "tools": [
+          {
+            "description": "Record a finding for the connected project.",
+            "name": "findings.record"
+          },
+          {
+            "description": "Ask the project's REST API, with the public key, how many rows anyone can see.",
+            "name": "probe.exposure"
+          },
+          {
+            "description": "Read the project's security advisor lints.",
+            "name": "supabase.advisors.security"
+          },
+          {
+            "description": "Read the connected project's metadata and health.",
+            "name": "supabase.project.read"
+          },
+          {
+            "description": "Run one reviewed, allowlisted catalog query through the read-only endpoint.",
+            "name": "supabase.query.allowlisted"
+          },
+          {
+            "description": "Read schema shape: tables, columns, exposed schemas, storage bucket flags.",
+            "name": "supabase.schema.read"
+          }
+        ]
+      },
+      "manifest_hash": "2e2d446877cb41c527fb94f7df42ed85cbdb1b16b1c0ab906e2f1797daa7a6c9"
+    },
+    "usage_watcher": {
+      "manifest": {
+        "agent": "usage_watcher",
+        "description": "Watches the project's usage and plan limits so nothing surprises the owner.",
+        "human_gate": false,
+        "manifest_format": 1,
+        "notification_budget": {
+          "digests_per_7_days": 0,
+          "realtime_alerts_per_7_days": 0
+        },
+        "owner": "dheeru",
+        "registry_version": 1,
+        "schedule": "nightly",
+        "status": "planned",
+        "tier": 0,
+        "tier_name": "read_and_report",
+        "tools": [
+          {
+            "description": "Record a finding for the connected project.",
+            "name": "findings.record"
+          },
+          {
+            "description": "Read the connected project's metadata and health.",
+            "name": "supabase.project.read"
+          }
+        ]
+      },
+      "manifest_hash": "746fce6f81d9c4ee41d96a7a1d6fa19156ded37845dcad8274380c3fc618b511"
+    }
+  },
+  "generated_by": "postern registry compile --write"
+}

@@ -1,14 +1,21 @@
 """Threat-model tests: TM-14, TM-15, TM-16, TM-17. See docs/threat-model.md."""
 
+from typing import Any
+
+import psycopg
 import pytest
 
 
-@pytest.mark.xfail(
-    raises=NotImplementedError, strict=True, reason="TM-14, TM-15 · prevention lands in Phase 3"
-)
-def test_critical_severity_requires_confirmed_live_exposure() -> None:
-    """Severity "critical" requires a probe-confirmed live exposure."""
-    raise NotImplementedError
+def test_critical_severity_requires_confirmed_live_exposure(db: Any, seed: Any) -> None:
+    """Severity "critical" requires a probe-confirmed live exposure. Enforced by a database
+    constraint, so no code path can skip it."""
+    user = seed.user()
+    connection = seed.connection(user)
+    agent = seed.agent("severity_probe")
+    seed.finding(user, connection, agent, severity="critical", probe_confirmed=True)
+    seed.finding(user, connection, agent, severity="high", probe_confirmed=False)
+    with pytest.raises(psycopg.errors.CheckViolation, match="critical_requires_confirmed_probe"):
+        seed.finding(user, connection, agent, severity="critical", probe_confirmed=False)
 
 
 @pytest.mark.xfail(

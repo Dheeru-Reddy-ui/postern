@@ -1,0 +1,136 @@
+# Postern agent registry (invariant 5). The runtime refuses any agent not listed here, and
+# any tool call the agent's grant doesn't cover.
+#
+# Rules (enforced by postern/core/registry.py, TM-23):
+#   - every agent declares owner, tier, tools, human_gate and notification_budget
+#   - a tool must exist in postern/core/tools.py and be allowed for the agent's tier
+#   - tier 1 agents are human-gated; only tier 2 agents may have a notification budget
+#
+# After editing: `postern registry compile --write` (updates agents/manifests.lock.json),
+# then `postern registry sync` against the control plane. Registry changes pass the eval
+# gate before merge (invariant 7, from Phase 4).
+
+version: 1
+
+agents:
+  security_sentinel:
+    description: Finds exposed tables and other security problems, and confirms live exposure with a count-only probe.
+    owner: dheeru
+    tier: 0
+    status: planned  # Phase 3
+    schedule: nightly
+    human_gate: false
+    tools:
+      - supabase.project.read
+      - supabase.advisors.security
+      - supabase.schema.read
+      - supabase.query.allowlisted
+      - probe.exposure
+      - findings.record
+    notification_budget:
+      realtime_alerts_per_7_days: 0
+      digests_per_7_days: 0
+
+  health_investigator:
+    description: Reports project health problems such as a paused project or failing checks.
+    owner: dheeru
+    tier: 0
+    status: planned
+    schedule: nightly
+    human_gate: false
+    tools:
+      - supabase.project.read
+      - supabase.schema.read
+      - findings.record
+    notification_budget:
+      realtime_alerts_per_7_days: 0
+      digests_per_7_days: 0
+
+  performance_tuner:
+    description: Reports performance problems such as missing indexes and slow policies.
+    owner: dheeru
+    tier: 0
+    status: planned
+    schedule: nightly
+    human_gate: false
+    tools:
+      - supabase.project.read
+      - supabase.advisors.performance
+      - supabase.schema.read
+      - supabase.query.allowlisted
+      - findings.record
+    notification_budget:
+      realtime_alerts_per_7_days: 0
+      digests_per_7_days: 0
+
+  usage_watcher:
+    description: Watches the project's usage and plan limits so nothing surprises the owner.
+    owner: dheeru
+    tier: 0
+    status: planned
+    schedule: nightly
+    human_gate: false
+    tools:
+      - supabase.project.read
+      - findings.record
+    notification_budget:
+      realtime_alerts_per_7_days: 0
+      digests_per_7_days: 0
+
+  fix_drafter:
+    description: Drafts a fix for a finding, validates it in a throwaway database, and opens a pull request a human merges.
+    owner: dheeru
+    tier: 1
+    status: planned  # Phase 5
+    human_gate: true
+    tools:
+      - findings.read
+      - sandbox.validate_fix
+      - proposals.record
+      - github.push_postern_branch
+      - github.open_pull_request
+    notification_budget:
+      realtime_alerts_per_7_days: 0
+      digests_per_7_days: 0
+
+  digest_writer:
+    description: Writes the weekly digest from findings and the ledger, delivered through the notification service.
+    owner: dheeru
+    tier: 2
+    status: planned  # Phase 6
+    human_gate: false
+    tools:
+      - findings.read
+      - ledger.read
+      - notify.send_digest
+    notification_budget:
+      realtime_alerts_per_7_days: 0
+      digests_per_7_days: 1
+
+  platform_auditor:
+    description: Reads Postern's own metrics and logs and opens issues on Postern's own repository.
+    owner: dheeru
+    tier: 3
+    status: planned  # Phase 7
+    schedule: daily
+    human_gate: false
+    tools:
+      - postern.metrics.read
+      - postern.logs.read
+      - github.open_issue_postern_repo
+    notification_budget:
+      realtime_alerts_per_7_days: 0
+      digests_per_7_days: 0
+
+  # Exists only so operators can exercise the control plane end to end (Phase 2 "Done when",
+  # game days). It has no tools, so it can do nothing to anyone's project.
+  drill_echo:
+    description: Game-day and drill agent with no tools; used to exercise the run state machine.
+    owner: dheeru
+    tier: 0
+    status: active
+    human_gate: true
+    tools: []
+    notification_budget:
+      realtime_alerts_per_7_days: 0
+      digests_per_7_days: 0
