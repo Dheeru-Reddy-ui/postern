@@ -1,6 +1,6 @@
 # Postern architecture
 
-**Status:** Phase 1 (infrastructure as code). Each phase updates this file.
+**Status:** Phase 2 (control plane). Each phase updates this file.
 
 ## What exists now
 
@@ -9,6 +9,10 @@
 | GCP project `postern-prod-8ybj`: state bucket, APIs, Artifact Registry, service accounts, secret placeholders, `postern-api`, `postern-worker`, BigQuery `postern` (7 tables + dedup views), WIF, ₹100 budget | Applied 2026-10-13; `terraform plan` shows no drift |
 | Postern's own Supabase project `postern-control` (ref `bpymxbzldxhsqrvrybyo`, us-east-1, org `postern`) | Applied 2026-10-13, SSL enforced |
 | pgmq 1.5.1 and pg_cron 1.6.4 on `postern-control` (Postgres 17.11) | Migration `20261013000000_enable_pgmq_and_pg_cron.sql` pushed; queues not exposed through the Data API |
+| Control plane: `postern` schema on `postern-control` (ADR-011) | Applied 2026-10-14. Has 10 tables, all with RLS, plus: <br>• append-only, hash-chained `audit_log` <br>• run state machine and human gate in triggers <br>• writes only through `SECURITY DEFINER` functions <br>• roles `postern_api` and `postern_worker` (no login yet) |
+| Queues and schedules | pgmq `tier0`, `tier1`, `tier2`, `meta`; pg_cron `postern-nightly-runs` at 02:17 UTC (no active nightly agents yet) |
+| Agent registry | `agents/registry.yaml`, 8 agents synced: `drill_echo` active, 7 planned. Manifests compiled to `agents/manifests.lock.json`. |
+| CLI | `postern registry validate\|compile\|sync`, `postern replay <run_id>`, `postern audit verify` |
 | `postern-api` | FastAPI, `GET /health` only |
 | `postern-worker` | Logs one structured "hello" line and exits |
 | CI/CD | `ci.yml`: checks and image build on every PR; on `main`, deploy via WIF with a smoke test |
@@ -118,5 +122,6 @@ The threat model ([threat-model.md](threat-model.md)) is the source of truth. In
 | [ADR-008](adr/ADR-008-test-environment.md) | Two free projects in separate orgs: `postern-control` and a `testbed` with planted and clean tables |
 | [ADR-009](adr/ADR-009-license.md) | Apache-2.0 |
 | [ADR-010](adr/ADR-010-infrastructure-and-deploy-ownership.md) | Three Terraform roots; Terraform owns shape, CI owns images |
+| [ADR-011](adr/ADR-011-control-plane-data-model.md) | Private `postern` schema, function-only writes, hash-chained audit log, DB-enforced state machine (Proposed) |
 
 Still open: what starts the worker Job (ADR-002 consequences, Phase 1–2).

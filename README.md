@@ -8,8 +8,9 @@ row-level security. Postern watches for that door, and for health and performanc
 and turns what it finds into tested fixes that a human approves. Postern holds no credential
 that could open the door itself.
 
-> **Status: Phase 1 complete (infrastructure as code).** GCP and Postern's own Supabase project
-> exist and deploy from CI; the API serves only `/health`, and no agents run yet. See
+> **Status: Phase 2 (control plane).** GCP and Postern's own Supabase project exist and deploy
+> from CI. The control plane (registry, run state machine, hash-chained audit log, queues)
+> is live; no agents do real work yet. See
 > [PHASE_PROMPTS.md](PHASE_PROMPTS.md) for the build plan.
 
 ## What "read-only by construction" means

@@ -4,7 +4,16 @@ All notable changes to Postern are recorded here, one section per phase.
 
 ## [Unreleased]
 
-### Phase 2: control plane (in progress)
+### Phase 2: control plane (all "Done when" checks met; awaiting Dheeru's sign-off)
+
+**Applied to `postern-control` on 2026-10-14:**
+- three migrations;
+- registry synced (8 agents);
+- game-day drill run `142e275c…` driven through every state in the SQL editor, then
+  rebuilt by `postern replay` from the audit log alone;
+- `postern audit verify` finds the 15-row chain intact
+  (`docs/incidents/2026-10-14-game-day-control-plane-drill.md`).
+
 
 - **`postern` schema** (declarative files in `supabase/schemas/`, ADR-011):
   - users, connections (tokens as envelope ciphertext only), agents, runs, steps, findings,
