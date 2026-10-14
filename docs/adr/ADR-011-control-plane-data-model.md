@@ -1,6 +1,6 @@
 # ADR-011: Control plane data model and write path
 
-**Status:** Proposed · **Date:** 2026-10-14 · **Decider:** Dheeru
+**Status:** Accepted (Dheeru, 2026-10-14) · **Date:** 2026-10-14 · **Decider:** Dheeru
 
 ## Context
 

@@ -4,7 +4,7 @@ All notable changes to Postern are recorded here, one section per phase.
 
 ## [Unreleased]
 
-### Phase 2: control plane (all "Done when" checks met; awaiting Dheeru's sign-off)
+### Phase 2: control plane (complete, signed off by Dheeru 2026-10-14)
 
 **Applied to `postern-control` on 2026-10-14:**
 - three migrations;
@@ -13,6 +13,8 @@ All notable changes to Postern are recorded here, one section per phase.
   rebuilt by `postern replay` from the audit log alone;
 - `postern audit verify` finds the 15-row chain intact
   (`docs/incidents/2026-10-14-game-day-control-plane-drill.md`).
+- Stray drill run `c88fac5e…` closed as `failed` (`drill_abandoned`, audit row #16), with its
+  queue message archived. ADR-011 accepted.
 
 
 - **`postern` schema** (declarative files in `supabase/schemas/`, ADR-011):

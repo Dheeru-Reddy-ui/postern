@@ -45,5 +45,5 @@ Refused attempts leave no audit rows, because nothing changed.
 
 | Action | Owner | Status |
 |---|---|---|
-| Close the stray drill run `c88fac5e…` (queued → failed, `error_code = drill_abandoned`) and archive its message | Claude, with Dheeru's OK | open |
+| Close the stray drill run `c88fac5e…` (queued → failed, `error_code = drill_abandoned`) and archive its message | Claude, with Dheeru's OK | done 06:06 UTC (audit row #16) |
 | Ship a `postern drill` command that runs this whole drill in one step, for future game days | Phase 8 game day | open |
