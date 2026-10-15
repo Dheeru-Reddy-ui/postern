@@ -13,6 +13,7 @@ run's own transaction rolls back.
 """
 
 import json
+import logging
 import os
 import time
 from collections.abc import Callable
@@ -62,10 +63,23 @@ class GatewayResponse:
     latency_ms: int
 
 
+LITELLM_LOGGERS = ("LiteLLM", "LiteLLM Router", "LiteLLM Proxy")
+
+
 def _litellm_completion() -> tuple[CompletionFn, CostFn]:
     # Use LiteLLM's bundled pricing table rather than fetching one over the network.
     os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+    os.environ.setdefault("LITELLM_LOG", "WARNING")
     import litellm
+
+    # LiteLLM attaches its own plain-text stderr handler. Remove it, so its records reach
+    # only Postern's root handler, which redacts and writes structured JSON (TM-05), and
+    # keep its chatter to warnings and above.
+    litellm.suppress_debug_info = True
+    for name in LITELLM_LOGGERS:
+        third_party = logging.getLogger(name)
+        third_party.handlers.clear()
+        third_party.setLevel(logging.WARNING)
 
     def cost(response: Any) -> float:
         return float(litellm.completion_cost(completion_response=response))

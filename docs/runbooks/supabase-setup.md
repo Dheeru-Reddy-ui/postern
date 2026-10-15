@@ -143,6 +143,9 @@ code name the same scopes.
    holds for testing never covers its own control plane.
 3. In the testbed's SQL editor, run `docs/runbooks/testbed.sql` once. It creates three planted
    issues and four near-misses, all with made-up rows. Never run it anywhere else.
+   - The SQL editor may warn that a table has RLS disabled and offer to enable it. Choose to
+     run the query **without** enabling RLS: the RLS-off table is a planted issue.
+   - The script ends with a check: both rows must show `rls_on = false`.
 4. Connect it as a Postern user would (docs/runbooks/runtime.md, "Connect a project").
 
 Two things to expect:
