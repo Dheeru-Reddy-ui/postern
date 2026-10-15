@@ -84,3 +84,13 @@ create table private.staff_notes (
   body text not null
 );
 insert into private.staff_notes (body) values ('made-up staff note');
+
+-- ---------------------------------------------------------------- check
+
+-- Both rows must show rls_on = false. If the SQL editor offered to enable RLS and that was
+-- accepted, the planted issue is gone: run the two `disable row level security` lines
+-- for notes and staff_notes again (this happened on 2026-10-15).
+select c.relnamespace::regnamespace as schema, c.relname as table_name,
+       c.relrowsecurity as rls_on
+from pg_catalog.pg_class c
+where c.oid in ('public.notes'::regclass, 'private.staff_notes'::regclass);

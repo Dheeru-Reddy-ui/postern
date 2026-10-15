@@ -170,6 +170,16 @@ def test_secrets_never_appear_in_logs_or_prompts(
     assert result == {"explained": 1}
     assert recorded == ["Turn on RLS."]
 
+    # LiteLLM's own logging can't bypass that formatter: once the gateway loads it, its
+    # loggers have no handler of their own and log only warnings and above.
+    from postern.llm.gateway import LITELLM_LOGGERS, _litellm_completion
+
+    _litellm_completion()
+    for name in LITELLM_LOGGERS:
+        third_party = logging.getLogger(name)
+        assert third_party.handlers == [], name
+        assert third_party.getEffectiveLevel() >= logging.WARNING, name
+
     # And in a real run, the owner's public key and the access token stay out of prompts.
     world = sentinel_world()
     world.run()

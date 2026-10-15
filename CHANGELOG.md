@@ -20,8 +20,40 @@ All notable changes to Postern are recorded here, one section per phase.
 - the testbed project `lsngduwpmudaoernxqut` was created in org `postern-testbed`, with
   `docs/runbooks/testbed.sql` applied.
 
-Still to do: deploy the code (merge to `main`), connect the testbed, run the Sentinel on it,
-observe a nightly run, and replay it.
+**Live on 2026-10-15 and 16:**
+- The code deployed with PR #1 (`5e9a7da`); `/health` reports it, and the worker smoke test
+  passed.
+- The testbed was connected through the real OAuth flow: tokens stored as envelopes, the
+  key classified as a legacy anon key.
+- First run (`1cfb478f…`): it found `order_summary` and `profiles`, both critical and
+  probe-confirmed, and nothing false.
+  - `notes` wasn't reported because its RLS had been switched on while setting up the
+    testbed, so it wasn't exposed. That was correct.
+  - The live advisor had no lint for the `USING (true)` policy; Postern's catalog check
+    found it.
+- `notes` was re-planted. Second run (`b20c3384…`): it found **all three planted issues**,
+  all critical, with anonymous row counts of 37, 12 and 5. It recorded the earlier two as
+  `seen_again`, with no duplicates, and nothing on the near-misses.
+- Proven live:
+  - `aiplatform.endpoints.predict` is enough for Gemini on Vertex AI;
+  - the session pooler accepts the component roles;
+  - the BigQuery Storage Write API path works;
+  - the PostgREST `HEAD` count works with the anon key.
+- `postern replay` rebuilds the first run from the audit log; the chain is intact (56 rows).
+- LLM spend so far: $0.00097.
+
+**Follow-ups (PR #2):**
+- LiteLLM's own stderr handler is removed and its loggers set to WARNING, so its lines go
+  only through Postern's redacting JSON logger.
+- The testbed guide warns about the SQL editor's "enable RLS" offer, and `testbed.sql` ends
+  with a check.
+
+**Open for Phase 4:** LiteLLM warns that Gemini 3 models should run at their default
+temperature (1.0); Postern uses 0. Changing it alters model behaviour, so it goes through the
+eval gate.
+
+Still to do for Phase 3's "Done when": observe a real nightly run (pg_cron at 02:17 UTC, the
+worker at 02:30 UTC) and replay it.
 
 **Incident:** during setup, `postern-control` was paused instead of another free project,
 then restored before any database change was made. No users were affected and no data was
