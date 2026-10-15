@@ -17,6 +17,14 @@ resource "google_service_account" "worker" {
   depends_on = [google_project_service.enabled]
 }
 
+resource "google_service_account" "scheduler" {
+  account_id   = "postern-scheduler"
+  display_name = "postern-scheduler (Cloud Scheduler)"
+  description  = "Starts postern-worker each night. Can do nothing else."
+
+  depends_on = [google_project_service.enabled]
+}
+
 resource "google_service_account" "deployer" {
   account_id   = "postern-deployer"
   display_name = "postern-deployer (GitHub Actions via WIF)"
@@ -32,6 +40,34 @@ resource "google_bigquery_dataset_iam_member" "worker_writes_warehouse" {
   dataset_id = google_bigquery_dataset.postern.dataset_id
   role       = "roles/bigquery.dataEditor"
   member     = google_service_account.worker.member
+}
+
+# Calls Gemini on Vertex AI, and nothing else there (ADR-012). roles/aiplatform.user would
+# also let it create endpoints, datasets and jobs. aiplatform.endpoints.predict is the
+# permission Google's own service agents hold to call publisher models.
+resource "google_project_iam_custom_role" "model_caller" {
+  role_id     = "posternModelCaller"
+  title       = "Postern model caller"
+  description = "Call Gemini models on Vertex AI. Nothing else."
+  permissions = ["aiplatform.endpoints.predict"]
+
+  depends_on = [google_project_service.enabled]
+}
+
+resource "google_project_iam_member" "worker_calls_models" {
+  project = var.project_id
+  role    = google_project_iam_custom_role.model_caller.id
+  member  = google_service_account.worker.member
+}
+
+# --- scheduler ------------------------------------------------------------------------
+
+# Job-level: it may start postern-worker, and no other job or service.
+resource "google_cloud_run_v2_job_iam_member" "scheduler_runs_worker" {
+  name     = google_cloud_run_v2_job.worker.name
+  location = google_cloud_run_v2_job.worker.location
+  role     = "roles/run.invoker"
+  member   = google_service_account.scheduler.member
 }
 
 # --- deployer -------------------------------------------------------------------------

@@ -8,9 +8,9 @@ row-level security. Postern watches for that door, and for health and performanc
 and turns what it finds into tested fixes that a human approves. Postern holds no credential
 that could open the door itself.
 
-> **Status: Phase 2 (control plane).** GCP and Postern's own Supabase project exist and deploy
-> from CI. The control plane (registry, run state machine, hash-chained audit log, queues)
-> is live; no agents do real work yet. See
+> **Status: Phase 3 (runtime and Security Sentinel), being rolled out.** The control plane is
+> live. The worker runtime, the LLM gateway, Supabase OAuth and the Security Sentinel are
+> built and tested, and are going into production on a single test project. See
 > [PHASE_PROMPTS.md](PHASE_PROMPTS.md) for the build plan.
 
 ## What "read-only by construction" means
@@ -18,9 +18,10 @@ that could open the door itself.
 Safety is enforced by credentials, database constraints and code. It does not depend on
 prompts asking a model to behave.
 
-- **Supabase:** OAuth with four read-only scopes (`projects:read`, `database:read`,
-  `rest:read`, `storage:read`). Postern never requests, accepts or stores a `service_role`
-  key, a secret API key or a database password.
+- **Supabase:** OAuth with three read-only scopes (`projects:read`, `database:read`,
+  `storage:read`). Postern never requests, accepts or stores a `service_role` key, a secret
+  API key, a JWT secret or a database password, and it refuses projects with temporary
+  database access enabled.
 - **Exposure checks:** use only the public (publishable/anon) key you paste in, which your app
   already ships to every browser. Postern records table name, HTTP status, a capped row count
   and a timestamp. It never stores your rows.

@@ -4,7 +4,8 @@ import os
 import secrets
 import string
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -12,9 +13,11 @@ import hcl2
 import psycopg
 import pytest
 from psycopg.types.json import Jsonb
+from support import FakeSupabase, Relation, SentinelWorld, connect_api
 
 from postern.core.compiler import compile_registry
 from postern.core.registry import load_registry
+from postern.integrations.supabase_mgmt.tokens import TokenCipher
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -132,14 +135,23 @@ class Seed:
         human_gate: bool = False,
         status: str = "active",
         schedule: str | None = None,
+        tools: Iterable[str] = (),
     ) -> str:
-        manifest = {"agent": name, "tier": tier, "tools": [], "test": True}
+        granted = sorted(tools)
+        manifest = {
+            "agent": name,
+            "tier": tier,
+            "human_gate": human_gate,
+            "tools": [{"name": tool} for tool in granted],
+            "test": True,
+        }
         self.conn.execute(
-            "select postern.sync_agent(%s, 'tests', %s::smallint, '{}'::text[], %s, %s, %s,"
+            "select postern.sync_agent(%s, 'tests', %s::smallint, %s::text[], %s, %s, %s,"
             " %s::postern.agent_status, %s, %s, 1)",
             (
                 name,
                 tier,
+                granted,
                 human_gate,
                 Jsonb({"realtime_alerts_per_7_days": 0, "digests_per_7_days": 0}),
                 schedule,
@@ -188,6 +200,36 @@ class Seed:
         assert row
         return str(row[0])
 
+    def active_connection(self, user_id: str, *, key: str | None = None) -> str:
+        """A connection as the OAuth callback leaves it, plus the owner's public key."""
+        cipher = TokenCipher(os.urandom(32))
+        ref = "".join(secrets.choice(string.ascii_lowercase) for _ in range(20))
+        row = self.conn.execute(
+            "select postern.save_connection(%s, %s, %s, %s, 'v1', %s)",
+            (
+                user_id,
+                ref,
+                cipher.encrypt("test-access-token"),
+                cipher.encrypt("test-refresh-token"),
+                datetime.now(UTC) + timedelta(hours=1),
+            ),
+        ).fetchone()
+        assert row
+        connection_id = str(row[0])
+        self.conn.execute(
+            "select postern.set_publishable_key(%s, %s)",
+            (connection_id, key or "sb_publishable_" + secrets.token_urlsafe(24)),
+        )
+        return connection_id
+
+    def project_ref(self, connection_id: str) -> str:
+        row = self.conn.execute(
+            "select supabase_project_ref from postern.connections where id = %s",
+            (connection_id,),
+        ).fetchone()
+        assert row
+        return str(row[0])
+
     def run(self, agent: str, *, key: str | None = None, connection: str | None = None) -> str:
         row = self.conn.execute(
             "select postern.enqueue_run(%s, 'drill', %s, %s)",
@@ -231,3 +273,32 @@ class Seed:
 @pytest.fixture
 def seed(db: psycopg.Connection[Any]) -> Seed:
     return Seed(db)
+
+
+@pytest.fixture
+def tier0(db: psycopg.Connection[Any]) -> str:
+    """The tier0 queue, emptied inside the test transaction so only this test's runs exist."""
+    db.execute("select pgmq.purge_queue('tier0')")
+    return "tier0"
+
+
+@pytest.fixture
+def sentinel_world(
+    db: psycopg.Connection[Any], seed: Seed, tier0: str
+) -> Callable[..., SentinelWorld]:
+    def build(relations: list[Relation] | None = None, **options: Any) -> SentinelWorld:
+        return SentinelWorld(db, seed, relations, **options)
+
+    return build
+
+
+@pytest.fixture
+def connect_client(db: psycopg.Connection[Any]) -> Iterator[Callable[..., Any]]:
+    """Build postern-api's connect routes against a fake Supabase; overrides are cleared after."""
+    from postern.api.app import app
+
+    def build(fake: FakeSupabase, cipher: TokenCipher | None = None) -> Any:
+        return connect_api(db, fake, cipher or TokenCipher(os.urandom(32)))
+
+    yield build
+    app.dependency_overrides = {}

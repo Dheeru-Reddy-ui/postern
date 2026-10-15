@@ -74,7 +74,7 @@ fetched on 2026-10-13. Phase 3 re-verifies them with contract tests against real
 |---|---|---|---|
 | `GET /v1/projects/{ref}/advisors/security` | `database:read` | experimental | Security Sentinel |
 | `GET /v1/projects/{ref}/advisors/performance` | `database:read` | experimental | Performance Tuner |
-| `POST /v1/projects/{ref}/database/query/read-only` | `database:read` | beta, experimental | splinter fallback and introspection, runs as `supabase_read_only_user` |
+| `POST /v1/projects/{ref}/database/query/read-only` | `database:read` | beta, experimental | Postern's own catalog checks, runs as `supabase_read_only_user` |
 | `GET /v1/projects/{ref}/types/typescript` | `database:read` | stable | schema shape |
 | `POST /v1/projects/{ref}/database/query` | `database:write` | beta | **never requested** |
 | `GET /v1/projects/{ref}/api-keys` | `secrets:read` | stable | **never requested** (invariant 2) |
@@ -89,10 +89,16 @@ The same spec maps every read scope to the endpoints it unlocks:
 
 Consequences:
 
-- **Postern's scopes are `projects:read`, `database:read`, `rest:read` and `storage:read`**
+- **Postern's scopes are `projects:read`, `database:read` and `storage:read`**
   ([ADR-005](adr/ADR-005-supabase-oauth-scopes.md)). There is no `*:write` scope and no
-  `secrets:*` scope. `auth:read` is excluded because it covers secret-bearing settings Postern
-  doesn't need, and `organizations:read` because it returns people.
+  `secrets:*` scope. Other exclusions:
+  - `rest:read` (removed 2026-10-14) can return the project's **JWT secret**, which mints
+    `service_role` tokens;
+  - `auth:read` covers secret-bearing settings Postern doesn't need;
+  - `organizations:read` returns people.
+- **`database:read` includes the "temporary access" (JIT) endpoints.** If a project has
+  temporary access enabled, Postern refuses the connection (ADR-005), and Phase 4 proves an
+  OAuth token can't be used as a database login.
 - **Read-only does not mean data-blind.** `supabase_read_only_user` can `SELECT` every table.
   The read-only credential stops writes; it does not stop Postern from seeing rows. TM-01 and
   TM-02 rely on code-level allowlists for that reason.
@@ -130,8 +136,8 @@ Consequences:
 | TM-24 | Human gate skipped | Critical | Low | 2, 5–6 |
 | TM-25 | Cross-tenant leakage inside Postern | Critical | Medium | 2, 6, 8 |
 | TM-26 | Exposure probes disturb the user's app | Medium | Medium | 3 |
-| TM-27 | Postern silently stops watching | High | High | 3, 7 |
-| TM-28 | Dependency or CI supply-chain compromise | Critical | Medium | 0, 8 |
+| TM-27 | Postern silently stops watching | High | High | 3, 6, 7 |
+| TM-28 | Dependency or CI supply-chain compromise | Critical | Medium | 0, 3, 8 |
 | TM-29 | Deploy pipeline identity abused | Critical | Low | 1 |
 | TM-30 | User data kept after disconnect | High | Medium | 8 |
 | TM-31 | Untrusted repository code runs inside Postern during fix validation | Critical | Medium | 5 |
@@ -154,11 +160,12 @@ Consequences:
 - The probe result type has exactly four fields: table, HTTP status, row count capped at
   1000, and timestamp. Nothing else can be persisted.
   → `tests/invariants/test_probe_data_minimisation.py::test_probe_result_has_only_allowed_fields`
-- Probes ask PostgREST for a count only (a `HEAD` request with a count preference, to verify in
-  Phase 3), so no row body is ever received.
+- Probes ask PostgREST for a count only: a `HEAD` request with `Prefer: count=estimated`
+  (verified against PostgREST's documentation, 2026-10-14), so no row body is ever received.
   → `tests/invariants/test_probe_data_minimisation.py::test_probe_never_reads_response_rows`
-- The read-only query tool runs only reviewed, allowlisted statements (splinter lints and
-  catalog introspection), keyed by hash. No agent grant includes free-form SQL.
+- The read-only query tool runs only reviewed, allowlisted statements (Postern's own catalog
+  checks, which read only `pg_catalog` and `information_schema`), keyed by name and hash. No
+  agent grant includes free-form SQL.
   → `tests/invariants/test_read_only_query_allowlist.py::test_read_only_query_runs_only_allowlisted_statements`
 - Row values never enter an LLM prompt. Tool outputs are typed, and no type carries row
   values ([ADR-004](adr/ADR-004-no-row-values-in-prompts.md)).
@@ -301,11 +308,13 @@ has never written SQL will sometimes paste the wrong one.
   `anon`, before persistence. A rejected value is never stored or logged.
   → `tests/credential_audit/test_supabase_scopes.py::test_onboarding_rejects_service_role_and_secret_keys`
 - Requested scopes must be a subset of the fixed allowlist in ADR-005. No `secrets:*`,
-  `auth:read` or `*:write` scope appears.
+  `auth:read`, `rest:read` or `*:write` scope appears. Postern also names exactly these
+  scopes in every authorization request, so a misconfigured OAuth app can't widen a grant.
   → `tests/credential_audit/test_supabase_scopes.py::test_oauth_scopes_are_within_read_only_allowlist`
-- The Supabase client implements only allowlisted `GET` endpoints. Endpoints inside a
-  granted scope that Postern doesn't need (SQL snippets, backups, pooler config) aren't
-  callable.
+- The Supabase client implements only allowlisted endpoints: GETs, plus the read-only
+  query's POST. Endpoints inside a granted scope that Postern doesn't need (SQL snippets,
+  backups, pooler config, temporary database access) aren't callable. Each allowlisted
+  endpoint is checked against a pinned copy of Supabase's OpenAPI spec.
   → `tests/credential_audit/test_supabase_scopes.py::test_supabase_client_calls_only_allowlisted_endpoints`
 - A live test confirms a real Postern token gets a refusal from `GET /v1/projects/{ref}/api-keys`.
   → `tests/credential_audit/test_supabase_scopes.py::test_supabase_token_cannot_read_api_keys`
@@ -338,6 +347,15 @@ changing settings, and deleting anything.
 - Config, code and Secret Manager contain no user database password, `service_role` key or
   secret key.
   → `tests/credential_audit/test_repo_hygiene.py::test_no_user_database_passwords_or_service_role_keys_in_config`
+- `database:read` can't write, but a project with temporary database access turned on lets
+  access tokens log into Postgres, where a role can write. Postern refuses to connect such a
+  project, and the token broker re-checks before every token it hands out, marking the
+  connection and destroying its tokens if the setting appears
+  ([ADR-005](adr/ADR-005-supabase-oauth-scopes.md)).
+  → `tests/credential_audit/test_supabase_write_attempts.py::test_connection_refused_when_temporary_access_enabled`
+- A live test confirms a real Postern token can't open a Postgres session on a project
+  without temporary access.
+  → `tests/credential_audit/test_supabase_write_attempts.py::test_oauth_token_cannot_log_into_postgres`
 
 **Detection:** The credential-audit suite runs against test projects on a schedule, so a
 Supabase-side permission change shows up as a failing test.
@@ -432,7 +450,8 @@ from injected instructions) would run with those secrets.
 - The gateway reserves estimated spend atomically in Postgres before each call. Over the
   monthly cap it refuses, parks runs and alerts.
   → `tests/invariants/test_llm_gateway.py::test_gateway_refuses_calls_over_monthly_cap`
-- The agent loop enforces per-run step and token limits from the registry.
+- The agent loop enforces per-run limits on steps, model calls, prompt size and output tokens,
+  from `postern/runtime.yaml`.
   → `tests/invariants/test_llm_gateway.py::test_agent_loop_stops_at_step_and_token_limits`
 - Provider SDKs and LiteLLM are imported only in `postern/llm/gateway.py`. Ruff's banned-api
   rule also catches this at lint time.
@@ -570,14 +589,19 @@ change that parses as an empty list would read as "no problems".
 - The adapter validates responses strictly. Unknown or missing fields raise a schema error;
   they never yield an empty list.
   → `tests/invariants/test_advisor_adapter.py::test_advisor_shape_change_is_detected_not_ignored`
-- On adapter failure, Postern falls back to running splinter's lint SQL through the read-only
-  query endpoint.
-  → `tests/invariants/test_advisor_adapter.py::test_advisor_failure_falls_back_to_splinter_sql`
+- Postern's own catalog checks run through the read-only query endpoint on every check,
+  merged with the advisor's lints, so an advisor failure still leaves a complete check.
+  (Splinter's SQL can't be vendored: its repository has no license. The advisor also has no
+  lint for a `USING (true)` policy. See [ADR-012](adr/ADR-012-runtime.md).) An advisor lint
+  that means "couldn't check" is treated as a failure, not as "nothing found".
+  → `tests/invariants/test_advisor_adapter.py::test_advisor_failure_falls_back_to_catalog_sql`
 - Incomplete checks never report clean (shared with TM-16).
   → `tests/invariants/test_findings.py::test_incomplete_check_never_reports_clean`
 
-**Detection:** Nightly contract tests against real responses (`tests/integration/`), with the
-Platform Auditor alerting on heavy fallback use.
+**Detection:** Contract tests against a pinned copy of the Management API's OpenAPI spec
+(`tests/fixtures/supabase/`), refreshed by hand, plus recorded real responses from the
+testbed project. Every advisor failure is stored on the run (`advisor_error`), and the
+Platform Auditor alerts on heavy fallback use (Phase 7).
 
 **Lands in:** Phase 3.
 
@@ -804,15 +828,22 @@ bill can't be collected automatically.
 **Structural prevention:**
 - A dead-man's switch alerts the operator when a connection's nightly run is missing.
   → `tests/invariants/test_liveness.py::test_missed_nightly_run_raises_alert`
-- A revoked or expired connection is reported to the user ("we can't see your project
-  anymore"), never skipped quietly.
+- A revoked or expired connection fails its run with the reason recorded and alerts the
+  operator; it is never skipped quietly or counted as a clean check.
   → `tests/invariants/test_liveness.py::test_revoked_connection_is_reported_not_skipped`
+- Its owner is told, in plain words, that Postern can't see the project anymore and how to
+  reconnect.
+  → `tests/invariants/test_liveness.py::test_revoked_connection_is_explained_to_the_user`
 - Every report and digest shows the time of the last successful check.
   → `tests/invariants/test_liveness.py::test_reports_show_last_successful_check_time`
 
-**Detection:** The nightly run success-rate SLO.
+**Detection:** Every `postern_alert` log line and every worker or scheduler error emails the
+operator (one Cloud Monitoring log-match policy). The nightly run success-rate SLO follows in
+Phase 7. Until then, a scheduler that silently never fires would go unnoticed: that gap is
+open until Phase 7.
 
-**Lands in:** Phase 3, with SLO alerting in Phase 7.
+**Lands in:** Phase 3 (dead-man's switch, operator alerts), Phase 6 (telling the user), Phase 7
+(SLO alerting).
 
 ### TM-28 · Dependency or CI supply-chain compromise
 
@@ -831,13 +862,16 @@ reach.
 - Every GitHub Action is pinned to a full commit SHA.
   → `tests/credential_audit/test_supply_chain.py::test_github_actions_pinned_to_commit_shas`
 - LiteLLM and provider SDKs are installed only in the worker image, which can read only the
-  worker's secrets.
+  worker's secrets (its own database URL). The OAuth client secret, refresh tokens and the
+  token-encryption key stay in postern-api, whose image has no LLM code; the worker gets
+  short-lived access tokens from it ([ADR-012](adr/ADR-012-runtime.md)).
   → `tests/credential_audit/test_supply_chain.py::test_llm_sdk_installed_only_in_worker_image`
 
 **Detection:** Dependency scanning in CI (Phase 8) and Dependabot alerts. Lockfile diffs are
-reviewed by hand.
+reviewed by hand. CI checks that the API image contains no LiteLLM. Residual: LiteLLM is also
+installed on developer machines and in CI's test job, which hold no Postern secrets.
 
-**Lands in:** Phase 0 (lock and pinning), Phase 8 (scanning).
+**Lands in:** Phase 0 (lock and pinning), Phase 3 (image split), Phase 8 (scanning).
 
 ### TM-29 · Deploy pipeline identity abused
 
@@ -911,7 +945,7 @@ anything unusual alerts (timeouts, unexpected processes, egress denials).
 | Decision | Outcome | ADR |
 |---|---|---|
 | D1 · Row values in prompts | Never. Probes return counts, introspection returns schema only. | [ADR-004](adr/ADR-004-no-row-values-in-prompts.md) |
-| D2 · OAuth scopes | `projects:read`, `database:read`, `rest:read`, `storage:read`, plus a client-side endpoint allowlist | [ADR-005](adr/ADR-005-supabase-oauth-scopes.md) |
+| D2 · OAuth scopes | `projects:read`, `database:read`, `storage:read`, plus a client-side endpoint allowlist and the temporary-access guard (`rest:read` removed 2026-10-14) | [ADR-005](adr/ADR-005-supabase-oauth-scopes.md) |
 | D3 · Unprotected repos | Fix PRs only where GitHub enforces a non-bypassable review ruleset on the default branch. Everyone else gets reviewed SQL and steps. | [ADR-006](adr/ADR-006-github-fixes-on-protected-repos.md) |
 | D4 · Where validation runs | A self-contained validator image on its own Cloud Run Job, with no Docker daemon, no secrets and no egress. Spike first in Phase 5. | [ADR-007](adr/ADR-007-fix-validation-runtime.md) |
 | D5 · Free-plan projects | Two free projects in separate orgs: the control plane, and one testbed with planted and clean tables | [ADR-008](adr/ADR-008-test-environment.md) |

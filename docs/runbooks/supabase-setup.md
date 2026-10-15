@@ -105,3 +105,50 @@ Postgres clients.
 `drop extension pg_cron;` permanently deletes every cron job, and `drop extension pgmq;`
 deletes every queue and its messages. Only do this on a fresh project, and write a migration
 for it. Never run it by hand on the live control plane.
+
+## 6. Postern's Supabase OAuth app (Phase 3, Dheeru)
+
+Owners connect projects through this app. ADR-005 fixes its scopes.
+
+1. Dashboard → organization **`postern`** → Settings → **OAuth Apps** → add an application:
+   - **Name:** `Postern`
+   - **Website:** `https://github.com/Dheeru-Reddy-ui/postern`
+   - **Callback URL:** `https://postern-api-3nsmysl4ka-uc.a.run.app/oauth/supabase/callback`
+     (exactly; it must match `api_url` in `infra/terraform/gcp/variables.tf`)
+   - **Scopes:** tick exactly three, all read-only: `projects:read`, `database:read`,
+     `storage:read`. Nothing that ends in `:write`, and none of `secrets:read`, `rest:read`
+     (it can return the project's JWT secret), `auth:read` or `organizations:read`.
+2. Copy the **client ID** (not secret) into `infra/terraform/gcp/terraform.tfvars`:
+   `supabase_oauth_client_id = "<client id>"`.
+3. Store the **client secret** with a hidden prompt, in your own terminal. It goes straight
+   to Secret Manager; nothing echoes it, and it never enters a chat:
+   ```bash
+   uv run postern secrets set-supabase-client-secret --gcp-project postern-prod-8ybj --gcloud "$env:LOCALAPPDATA\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd"
+   ```
+   Then close the app page. If the secret is ever exposed, regenerate it there and run the
+   command again.
+
+Postern also requests exactly these three scopes in every authorization URL
+(`postern/integrations/supabase_mgmt/oauth.py`), so a wrongly configured app can't widen a
+grant. `tests/credential_audit/test_supabase_scopes.py` checks this runbook, ADR-005 and the
+code name the same scopes.
+
+## 7. The testbed (ADR-008, Dheeru)
+
+1. Pause any other active free project you own (Free plan: two active projects across every
+   organization you own or administer). **Never pause `postern-control`**: it's Postern's
+   production control plane (incident 2026-10-15).
+2. Create an organization **`postern-testbed`** (Free plan), and in it a project
+   **`testbed`** in us-east-1. Keep it separate from `postern`, so the OAuth grant Postern
+   holds for testing never covers its own control plane.
+3. In the testbed's SQL editor, run `docs/runbooks/testbed.sql` once. It creates three planted
+   issues and four near-misses, all with made-up rows. Never run it anywhere else.
+4. Connect it as a Postern user would (docs/runbooks/runtime.md, "Connect a project").
+
+Two things to expect:
+
+- The "Enable all access" table accepts writes from anyone holding the public key. That's the
+  planted issue; its rows are made up.
+- The advisor also reports project-level lints (for example, leaked-password protection,
+  which needs a paid plan). Those are true statements about the project's settings, not
+  planted table issues. They're judged separately (ADR-008).

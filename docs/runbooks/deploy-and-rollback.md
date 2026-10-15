@@ -10,13 +10,15 @@ $P = "<project_id>"; $R = "us-central1"
 
 Every push to `main` runs `.github/workflows/ci.yml`:
 
-1. **checks:** lint, types, tests, repo hygiene, and an image build.
+1. **checks:** lint, types, tests, repo hygiene, and both image builds. CI checks that the API
+   image contains no LiteLLM (TM-28).
 2. **deploy** (only on `main`, only once the `GCP_*` repository variables exist):
    1. Authenticate through Workload Identity Federation. No JSON key.
-   2. Build the image and push it to Artifact Registry as
-      `postern:<sha>-<run_id>-<attempt>`.
-   3. `gcloud run deploy postern-api --image <digest>` creates a new revision.
-   4. `gcloud run jobs update postern-worker --image <digest>`.
+   2. Build both images (`docker build --target api|worker`) and push them to Artifact
+      Registry as `postern/api:<sha>-<run_id>-<attempt>` and
+      `postern/worker:<sha>-<run_id>-<attempt>`.
+   3. `gcloud run deploy postern-api --image <api digest>` creates a new revision.
+   4. `gcloud run jobs update postern-worker --image <worker digest>`.
    5. **Smoke test:** `GET /health` must report the pushed commit's `git_sha`, and one
       execution of `postern-worker` must succeed.
 
@@ -48,11 +50,11 @@ smoke test fails on purpose until you roll forward.
 
 1. List recent images:
    ```bash
-   gcloud artifacts docker images list "$R-docker.pkg.dev/$P/postern/postern" --include-tags --sort-by=~UPDATE_TIME --limit 5
+   gcloud artifacts docker images list "$R-docker.pkg.dev/$P/postern/worker" --include-tags --sort-by=~UPDATE_TIME --limit 5
    ```
 2. Point the job at the last good digest:
    ```bash
-   gcloud run jobs update postern-worker --image "$R-docker.pkg.dev/$P/postern/postern@sha256:<GOOD_DIGEST>" --project $P --region $R
+   gcloud run jobs update postern-worker --image "$R-docker.pkg.dev/$P/postern/worker@sha256:<GOOD_DIGEST>" --project $P --region $R
    ```
 3. Verify:
    ```bash

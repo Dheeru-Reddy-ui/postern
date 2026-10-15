@@ -1,5 +1,6 @@
 # Warehouse (ADR-003). Postgres is the system of record; these tables receive append-only
-# event rows from the outbox shipper. Every column is documented in bigquery_schemas/*.json.
+# event rows from the outbox shipper. Every column is documented in
+# postern/integrations/bigquery/schemas/*.json.
 
 locals {
   # Partition expiration is a cost ceiling (TM-12) and a retention decision.
@@ -60,8 +61,9 @@ resource "google_bigquery_table" "event" {
   table_id            = each.key
   description         = each.value.description
   deletion_protection = true
-  schema              = file("${path.module}/bigquery_schemas/${each.key}.json")
-  clustering          = each.value.clustering
+  # The schema files live in the package so the worker can encode rows from them too.
+  schema     = file("${path.module}/../../../postern/integrations/bigquery/schemas/${each.key}.json")
+  clustering = each.value.clustering
 
   time_partitioning {
     type          = "DAY"

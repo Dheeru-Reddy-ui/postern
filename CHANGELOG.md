@@ -4,6 +4,114 @@ All notable changes to Postern are recorded here, one section per phase.
 
 ## [Unreleased]
 
+### Phase 3: runtime and Security Sentinel (in progress)
+
+**Applied to production on 2026-10-15** (each step approved by Dheeru):
+- the Supabase OAuth app `Postern` was created in org `postern` with `projects:read`,
+  `database:read` and `storage:read`; its client secret is in Secret Manager;
+- migrations `20261015000000_runtime.sql` and `20261015000100_component_logins.sql` were
+  pushed to `postern-control`;
+- the registry was synced (`security_sentinel` active), and the audit chain verified intact
+  (17 rows);
+- `postern_api` and `postern_worker` logins were set and verified through the session
+  pooler; their connection strings and the token-encryption key are in Secret Manager;
+- `terraform apply`: 11 added, 4 changed, 1 destroyed, then a second plan showed no drift.
+  `/health` is OK on the new API revision;
+- the testbed project `lsngduwpmudaoernxqut` was created in org `postern-testbed`, with
+  `docs/runbooks/testbed.sql` applied.
+
+Still to do: deploy the code (merge to `main`), connect the testbed, run the Sentinel on it,
+observe a nightly run, and replay it.
+
+**Incident:** during setup, `postern-control` was paused instead of another free project,
+then restored before any database change was made. No users were affected and no data was
+lost (`docs/incidents/2026-10-15-control-plane-paused-during-setup.md`).
+
+**Runtime** (`postern/core/runtime.py`, `worker.py`, `policy.py`, `store.py`; ADR-012):
+- a thin agent loop, where an agent's next action is a function of its checkpointed history;
+- a policy gate on every tool call;
+- one transaction per step, holding the step, its audit row and its warehouse event;
+- resume after a crash, re-checking the registry at dequeue;
+- tool failures fail the run, never "clean";
+- limits on steps, model calls and prompt size.
+
+**LLM gateway** (`postern/llm/gateway.py`):
+- Gemini on Vertex AI through LiteLLM 1.103.1, keyless: `gemini-3.5-flash-lite`, with
+  `gemini-3.1-flash-lite` as the fallback;
+- worst-case spend reserved in Postgres under a $1.13/month (about ₹100) cap; over it, runs
+  are parked and an alert fires;
+- prompts with anything credential-shaped are refused;
+- every call is logged with prompt, response, tokens, cost, latency and `run_id`, and
+  attributed to run, agent and user.
+
+**Supabase** (`postern/integrations/supabase_mgmt/`):
+- OAuth with PKCE (S256) and an explicit read-only `scope`; single-use, hashed,
+  browser-bound state;
+- tokens stored as AES-256-GCM envelopes;
+- a token broker in postern-api, so the worker never holds the client secret, refresh
+  tokens or the key;
+- an endpoint allowlist checked against a pinned copy of the OpenAPI spec;
+- a strict advisor adapter;
+- Postern's own catalog checks, always merged with the advisor;
+- a temporary-access guard.
+
+**Exposure probe** (`postern/integrations/probe.py`): a HEAD request with
+`Prefer: count=estimated`, recording table, status, capped count and time only. It's
+rate-limited, time-limited, and runs only on verified connections.
+
+**Security Sentinel** (`postern/agents/security_sentinel.py`): findings are deterministic,
+"critical" only when a probe confirms, and fingerprinted so resumed and repeated runs never
+duplicate them. The model writes the plain-language explanations afterwards, from labeled
+untrusted data.
+
+**Infrastructure** (Terraform, not applied):
+- APIs: Vertex AI, Cloud Scheduler, Monitoring, Logging;
+- the `postern-scheduler` service account and a nightly 02:30 UTC job;
+- the `posternModelCaller` custom role (`aiplatform.endpoints.predict` only);
+- Cloud Run env and secret wiring;
+- an operator email alert policy.
+
+Two images: `api` (no LLM code) and `worker`. CI builds both, checks the API image has no
+LiteLLM, and deploys each to its own component.
+
+**Database:** migrations `20261015000000_runtime.sql` and
+`20261015000100_component_logins.sql` (login for the component roles, with connection limits
+and timeouts).
+
+**CLI:** `users create`, `connect link|key`, `db-login rotate` (SCRAM verifier only, with the
+connection string sent straight to Secret Manager), `secrets init-token-key` and
+`secrets set-supabase-client-secret`.
+
+**Tests:** 115 pass, and 41 are expected failures (`xfail`) owned by later phases.
+- Every Phase 3 threat-model test is real now.
+- The kill test kills the worker mid-run; the resumed run repeats nothing and records each
+  finding once.
+- The offline Sentinel run on the ADR-008 testbed finds exactly the planted issues.
+- Postern's catalog SQL finds exactly those issues on real Supabase Postgres, run as
+  `supabase_read_only_user`.
+
+**Found while building:**
+- `rest:read` can return the JWT secret: removed (ADR-005 amendment).
+- The advisor has no lint for `USING (true)` policies, so Postern's catalog checks always
+  run.
+- `information_schema` grants are invisible to the read-only role: replaced with
+  `has_table_privilege`.
+- Restrictive policies were read as permissive: fixed.
+- `numeric` parameters needed explicit casts.
+
+**Docs:** ADR-012 (accepted 2026-10-15), ADR-005 amendment (accepted 2026-10-15), `docs/runbooks/runtime.md`,
+`docs/runbooks/testbed.sql`, `supabase-setup.md` sections 6–7, the threat model,
+`docs/architecture.md`.
+
+**Rollout** (each step needs Dheeru's approval or action):
+1. Create the OAuth app and the testbed.
+2. Push the migrations and sync the registry.
+3. Set component logins and the token key.
+4. `terraform apply`.
+5. Push to `main`.
+6. Connect the testbed.
+7. Observe a nightly run and replay it.
+
 ### Phase 2: control plane (complete, signed off by Dheeru 2026-10-14)
 
 **Applied to `postern-control` on 2026-10-14:**

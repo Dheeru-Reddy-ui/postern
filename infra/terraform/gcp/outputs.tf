@@ -6,7 +6,8 @@ output "api_url" {
 }
 
 output "image_repository" {
-  value = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.postern.repository_id}/postern"
+  description = "CI pushes <repository>/api and <repository>/worker."
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.postern.repository_id}"
 }
 
 output "wif_provider" {

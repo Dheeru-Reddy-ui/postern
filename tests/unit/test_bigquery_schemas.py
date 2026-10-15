@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-SCHEMAS = Path(__file__).resolve().parents[2] / "infra" / "terraform" / "gcp" / "bigquery_schemas"
+SCHEMAS = Path(__file__).resolve().parents[2] / "postern" / "integrations" / "bigquery" / "schemas"
 TYPES = {"STRING", "INTEGER", "NUMERIC", "BOOLEAN", "TIMESTAMP", "JSON"}
 MODES = {"REQUIRED", "NULLABLE"}
 # Invariant 4 / ADR-004: nothing in the warehouse may hold a user's row values.

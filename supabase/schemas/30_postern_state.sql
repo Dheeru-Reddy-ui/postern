@@ -188,6 +188,11 @@ begin
       'user_id', owner_id
     )
   );
+  perform postern.emit_event('runs', jsonb_build_object(
+    'run_id', new_run, 'agent', p_agent, 'tier', agent_row.tier, 'from_status', null,
+    'to_status', 'queued', 'trigger', p_trigger, 'idempotency_key', p_idempotency_key,
+    'attempt', 0, 'error_code', null, 'user_id', owner_id, 'connection_id', p_connection_id
+  ));
   perform pgmq.send(postern.queue_for_tier(agent_row.tier), jsonb_build_object('run_id', new_run));
   return new_run;
 end
@@ -205,6 +210,7 @@ set search_path = ''
 as $$
 declare
   current_status postern.run_status;
+  run_row postern.runs;
 begin
   select r.status into current_status from postern.runs r where r.id = p_run_id for update;
   if not found then
@@ -219,12 +225,20 @@ begin
                            else r.started_at end,
          finished_at = case when p_to in ('completed', 'failed', 'rolled_back') then now()
                             else r.finished_at end
-   where r.id = p_run_id;
+   where r.id = p_run_id
+  returning * into run_row;
 
   perform postern.write_audit(
     'run.transitioned', p_run_id, 'run', p_run_id::text,
     jsonb_build_object('from', current_status, 'to', p_to, 'error_code', p_error_code)
   );
+  perform postern.emit_event('runs', jsonb_build_object(
+    'run_id', p_run_id, 'agent', run_row.agent, 'tier', run_row.tier,
+    'from_status', current_status, 'to_status', p_to, 'trigger', run_row.trigger,
+    'idempotency_key', run_row.idempotency_key, 'attempt', run_row.attempt,
+    'error_code', p_error_code, 'user_id', run_row.user_id,
+    'connection_id', run_row.connection_id
+  ));
 end
 $$;
 
@@ -280,7 +294,8 @@ create function postern.record_step(
   p_input_hash text,
   p_output_hash text,
   p_refusal_reason text default null,
-  p_duration_ms integer default null
+  p_duration_ms integer default null,
+  p_output jsonb default null
 )
 returns bigint
 language plpgsql
@@ -288,16 +303,18 @@ security definer
 set search_path = ''
 as $$
 declare
+  run_row postern.runs;
   step_id bigint;
 begin
-  if not exists (select 1 from postern.runs r where r.id = p_run_id and r.status = 'running') then
+  select * into run_row from postern.runs r where r.id = p_run_id;
+  if not found or run_row.status <> 'running' then
     raise exception 'run % is not running', p_run_id using errcode = 'check_violation';
   end if;
 
   insert into postern.steps (run_id, step_index, kind, tool_name, status, refusal_reason,
-                             input_hash, output_hash, duration_ms)
+                             input_hash, output_hash, output, duration_ms)
   values (p_run_id, p_step_index, p_kind, p_tool_name, p_status, p_refusal_reason,
-          p_input_hash, p_output_hash, p_duration_ms)
+          p_input_hash, p_output_hash, p_output, p_duration_ms)
   returning id into step_id;
 
   perform postern.write_audit(
@@ -308,6 +325,13 @@ begin
       'input_hash', p_input_hash, 'output_hash', p_output_hash, 'duration_ms', p_duration_ms
     )
   );
+  perform postern.emit_event('steps', jsonb_build_object(
+    'run_id', p_run_id, 'agent', run_row.agent, 'step_index', p_step_index,
+    'step_kind', p_kind, 'tool_name', p_tool_name, 'status', p_status,
+    'refusal_reason', p_refusal_reason, 'input_hash', p_input_hash,
+    'output_hash', p_output_hash, 'duration_ms', p_duration_ms,
+    'user_id', run_row.user_id, 'connection_id', run_row.connection_id
+  ));
   return step_id;
 end
 $$;

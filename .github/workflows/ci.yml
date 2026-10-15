@@ -28,8 +28,10 @@ jobs:
           version: "0.11.28"
           enable-cache: true
 
+      # --all-extras: the worker extra (LiteLLM, BigQuery Storage) is type-checked and tested
+      # here even though only the worker image ships it.
       - name: Install locked dependencies
-        run: uv sync --locked
+        run: uv sync --locked --all-extras
 
       - name: Lint
         run: |
@@ -56,9 +58,14 @@ jobs:
           SKIP: ruff-check,ruff-format,mypy
         run: uv run --locked pre-commit run --all-files --show-diff-on-failure
 
-      # Catch Dockerfile breakage on every PR, before anything reaches the deploy job.
-      - name: Build image
-        run: docker build --build-arg GIT_SHA="${GITHUB_SHA}" -t postern:ci .
+      # Catch Dockerfile breakage on every PR, before anything reaches the deploy job, and
+      # prove the API image carries no LLM code (TM-28).
+      - name: Build images
+        run: |
+          docker build --target api --build-arg GIT_SHA="${GITHUB_SHA}" -t postern-api:ci .
+          docker build --target worker --build-arg GIT_SHA="${GITHUB_SHA}" -t postern-worker:ci .
+          docker run --rm --entrypoint python postern-api:ci -c             "import importlib.util as u, sys; sys.exit(u.find_spec('litellm') is not None)"
+          docker run --rm --entrypoint python postern-worker:ci -c "import litellm"
 
   # Deploys every push to main once the GCP infrastructure exists. The repository variables
   # come from `terraform output` (docs/runbooks/infra-setup.md). Until they're set, this job
@@ -78,7 +85,7 @@ jobs:
     env:
       PROJECT: ${{ vars.GCP_PROJECT_ID }}
       REGION: us-central1
-      IMAGE: us-central1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/postern/postern
+      REGISTRY: us-central1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/postern
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -91,23 +98,26 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
 
-      - name: Build and push image
+      - name: Build and push images
         run: |
           gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
-          tag="${IMAGE}:${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          docker build --build-arg GIT_SHA="${GITHUB_SHA}" -t "${tag}" .
-          docker push "${tag}"
-          # Deploy by digest, never by tag.
-          echo "IMAGE_REF=$(docker inspect --format='{{index .RepoDigests 0}}' "${tag}")" >> "${GITHUB_ENV}"
+          for target in api worker; do
+            tag="${REGISTRY}/${target}:${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            docker build --target "${target}" --build-arg GIT_SHA="${GITHUB_SHA}" -t "${tag}" .
+            docker push "${tag}"
+            # Deploy by digest, never by tag.
+            ref="$(docker inspect --format='{{index .RepoDigests 0}}' "${tag}")"
+            echo "${target^^}_IMAGE=${ref}" >> "${GITHUB_ENV}"
+          done
 
       - name: Deploy postern-api
         run: |
-          gcloud run deploy postern-api --image "${IMAGE_REF}" \
+          gcloud run deploy postern-api --image "${API_IMAGE}" \
             --project "${PROJECT}" --region "${REGION}" --quiet
 
       - name: Update postern-worker
         run: |
-          gcloud run jobs update postern-worker --image "${IMAGE_REF}" \
+          gcloud run jobs update postern-worker --image "${WORKER_IMAGE}" \
             --project "${PROJECT}" --region "${REGION}" --quiet
 
       - name: Smoke test
