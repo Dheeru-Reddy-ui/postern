@@ -8,14 +8,25 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "cryptography>=50.0.2",
     "fastapi>=0.143.0",
+    "google-auth[requests]>=2.62.0",
+    "httpx>=0.28.1",
     "psycopg[binary]>=3.3.6",
+    "pydantic>=2.14.1",
     "pyyaml>=6.0.3",
     "uvicorn>=0.54.0",
 ]
 
 [project.scripts]
 postern = "postern.cli:main"
+
+[project.optional-dependencies]
+worker = [
+    "google-cloud-bigquery-storage>=2.42.0",
+    "litellm==1.103.1",
+    "protobuf>=7.36.2",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.28,<0.12.0"]
@@ -48,12 +59,22 @@ select = [
     "RUF",
 ]
 
+# Exception names describe the condition (PolicyRefusal, SpendCapReached), not "...Error".
+ignore = ["N818"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.Cookie"]
+
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+# Tests use fake credentials and assert freely.
+"tests/**" = ["S101", "S105", "S106"]
 # Invariant 6: the gateway is the only module allowed to import an LLM provider SDK.
 "postern/llm/gateway.py" = ["TID251"]
 # Invariant 9: only the notification service may import a messaging client.
 "postern/integrations/notify/**" = ["TID251"]
+# The catalog statements are module constants built from other constants; no runtime value
+# is ever interpolated, and read_only_query sends only these exact strings (TM-01).
+"postern/integrations/supabase_mgmt/catalog.py" = ["S608"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
@@ -67,6 +88,7 @@ ban-relative-imports = "all"
 "google.genai".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
 "google.generativeai".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
 "vertexai".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
+"google.cloud.aiplatform".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
 "mistralai".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
 "cohere".msg = "Invariant 6: LLM calls go through postern/llm/gateway.py only."
 "resend".msg = "Invariant 9: users are contacted only through postern/integrations/notify."
@@ -97,11 +119,18 @@ warn_return_any = true
 no_implicit_reexport = true
 extra_checks = true
 
+# protobuf ships no type stubs; only the BigQuery shipper builds descriptors with it.
+[[tool.mypy.overrides]]
+module = ["google.protobuf", "google.protobuf.*"]
+ignore_missing_imports = true
+
 # --------------------------------------------------------------------------- pytest
 
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+# tests/support.py holds the shared test doubles.
+pythonpath = ["tests"]
 addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
 # Every pending threat-model test is xfail; a pass without removing the marker fails the build.
 xfail_strict = true

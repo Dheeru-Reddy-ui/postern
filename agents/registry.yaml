@@ -17,7 +17,7 @@ agents:
     description: Finds exposed tables and other security problems, and confirms live exposure with a count-only probe.
     owner: dheeru
     tier: 0
-    status: planned  # Phase 3
+    status: active  # Phase 3
     schedule: nightly
     human_gate: false
     tools:
@@ -27,6 +27,7 @@ agents:
       - supabase.query.allowlisted
       - probe.exposure
       - findings.record
+      - findings.explain
     notification_budget:
       realtime_alerts_per_7_days: 0
       digests_per_7_days: 0

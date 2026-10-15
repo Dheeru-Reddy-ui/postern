@@ -8,3 +8,7 @@ budget_amount   = 100
 
 # Set to true only while verifying the budget alert email, then back to false.
 test_budget_enabled = false
+
+# Phase 3. The client ID is shown on the Supabase OAuth app's page (not secret).
+supabase_oauth_client_id = "00000000-0000-4000-8000-000000000000"
+alert_email              = "you@example.com"

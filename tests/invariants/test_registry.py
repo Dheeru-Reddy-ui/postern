@@ -5,8 +5,13 @@ from typing import Any
 import psycopg
 import pytest
 import yaml
+from support import SavepointStore
 
+from postern.agents.security_sentinel import DrillEcho
+from postern.config import load_config
 from postern.core.registry import RegistryError, parse_registry
+from postern.core.runtime import Runtime
+from postern.core.worker import drain
 
 VALID_AGENT: dict[str, Any] = {
     "description": "test agent",
@@ -45,13 +50,49 @@ def test_unregistered_agent_cannot_be_enqueued(db: Any, seed: Any) -> None:
         )
 
 
-@pytest.mark.xfail(
-    raises=NotImplementedError, strict=True, reason="TM-23 · prevention lands in Phase 3"
-)
-def test_runtime_refuses_unregistered_agent_at_dequeue() -> None:
+def test_runtime_refuses_unregistered_agent_at_dequeue(db: Any, seed: Any, tier0: str) -> None:
     """The runtime re-checks registration at dequeue, so an agent removed after enqueue doesn't
     run."""
-    raise NotImplementedError
+    seed.agent("retiring_probe")
+    retired_run = seed.run("retiring_probe")
+    db.execute("select postern.retire_agents_not_in(array['security_sentinel'])")
+    store = SavepointStore(db)
+    assert store.claim_next_run(tier0, 60, 5) is None, "nothing runnable was handed out"
+    run = db.execute(
+        "select status::text, error_code from postern.runs where id = %s", (retired_run,)
+    ).fetchone()
+    assert run == ("failed", "agent_not_registered")
+    refusal = db.execute(
+        "select payload ->> 'status' from postern.audit_log"
+        " where run_id = %s and event_type = 'policy.refused'",
+        (retired_run,),
+    ).fetchone()
+    assert refusal == ("retired",)
+    queued = db.execute("select count(*) from pgmq.q_tier0").fetchone()
+    assert queued == (0,), "the message was archived, not left to retry"
+
+    # A registered agent the worker has no code for is refused by the worker, not run.
+    seed.agent("unknown_probe")
+    unknown_run = seed.run("unknown_probe")
+    runtime = Runtime(store, None, {}, load_config().agent_limits, visibility_seconds=60)
+    assert drain(store, runtime, {}, 60, 5, queue=tier0) == 0
+    status = db.execute(
+        "select status::text, error_code from postern.runs where id = %s", (unknown_run,)
+    ).fetchone()
+    assert status == ("failed", "agent_not_implemented")
+
+    # An agent whose manifest changed after its run was enqueued doesn't run either.
+    seed.agent("changing_probe", tools=["findings.record"])
+    changed_run = seed.run("changing_probe")
+    db.execute(
+        "update postern.agents set manifest_hash = %s where name = 'changing_probe'", ("1" * 64,)
+    )
+    claimed = store.claim_next_run(tier0, 60, 5)
+    assert claimed is not None
+    assert claimed.run_id == changed_run
+    store.commit()
+    outcome = runtime.execute(claimed, DrillEcho())
+    assert (outcome.status, outcome.error_code) == ("failed", "manifest_changed")
 
 
 @pytest.mark.parametrize(

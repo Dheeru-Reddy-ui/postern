@@ -1,0 +1,834 @@
+{
+ "source": "https://api.supabase.com/api/v1-json",
+ "fetched": "2026-10-14",
+ "note": "Subset of the Supabase Management API OpenAPI spec that Postern depends on. Refresh by re-fetching the spec and re-extracting (docs/runbooks/supabase-setup.md).",
+ "endpoints": {
+  "GET /v1/projects": {
+   "x-oauth-scope": "projects:read",
+   "response": {
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "id": {
+       "type": "string",
+       "deprecated": true,
+       "description": "Deprecated: Use `ref` instead."
+      },
+      "ref": {
+       "type": "string",
+       "minLength": 20,
+       "maxLength": 20,
+       "pattern": "^[a-z]+$",
+       "description": "Project ref",
+       "example": "abcdefghijklmnopqrst"
+      },
+      "organization_id": {
+       "type": "string",
+       "description": "Deprecated: Use `organization_slug` instead.",
+       "deprecated": true
+      },
+      "organization_slug": {
+       "type": "string",
+       "pattern": "^[\\w-]+$",
+       "description": "Organization slug",
+       "example": "tsrqponmlkjihgfedcba"
+      },
+      "name": {
+       "type": "string",
+       "description": "Name of your project"
+      },
+      "region": {
+       "type": "string",
+       "description": "Region of your project"
+      },
+      "created_at": {
+       "type": "string",
+       "description": "Creation timestamp"
+      },
+      "status": {
+       "type": "string",
+       "enum": [
+        "INACTIVE",
+        "ACTIVE_HEALTHY",
+        "ACTIVE_UNHEALTHY",
+        "COMING_UP",
+        "UNKNOWN",
+        "GOING_DOWN",
+        "INIT_FAILED",
+        "REMOVED",
+        "RESTORING",
+        "UPGRADING",
+        "PAUSING",
+        "RESTORE_FAILED",
+        "RESTARTING",
+        "PAUSE_FAILED",
+        "RESIZING"
+       ]
+      },
+      "database": {
+       "type": "object",
+       "properties": {
+        "host": {
+         "type": "string",
+         "description": "Database host"
+        },
+        "version": {
+         "type": "string",
+         "description": "Database version"
+        },
+        "postgres_engine": {
+         "type": "string",
+         "description": "Database engine"
+        },
+        "release_channel": {
+         "type": "string",
+         "description": "Release channel"
+        }
+       },
+       "required": [
+        "host",
+        "version",
+        "postgres_engine",
+        "release_channel"
+       ]
+      }
+     },
+     "required": [
+      "id",
+      "ref",
+      "organization_id",
+      "organization_slug",
+      "name",
+      "region",
+      "created_at",
+      "status",
+      "database"
+     ]
+    }
+   }
+  },
+  "GET /v1/projects/{ref}": {
+   "x-oauth-scope": "projects:read",
+   "response": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "deprecated": true,
+      "description": "Deprecated: Use `ref` instead."
+     },
+     "ref": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 20,
+      "pattern": "^[a-z]+$",
+      "description": "Project ref",
+      "example": "abcdefghijklmnopqrst"
+     },
+     "organization_id": {
+      "type": "string",
+      "description": "Deprecated: Use `organization_slug` instead.",
+      "deprecated": true
+     },
+     "organization_slug": {
+      "type": "string",
+      "pattern": "^[\\w-]+$",
+      "description": "Organization slug",
+      "example": "tsrqponmlkjihgfedcba"
+     },
+     "name": {
+      "type": "string",
+      "description": "Name of your project"
+     },
+     "region": {
+      "type": "string",
+      "description": "Region of your project"
+     },
+     "created_at": {
+      "type": "string",
+      "description": "Creation timestamp"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "INACTIVE",
+       "ACTIVE_HEALTHY",
+       "ACTIVE_UNHEALTHY",
+       "COMING_UP",
+       "UNKNOWN",
+       "GOING_DOWN",
+       "INIT_FAILED",
+       "REMOVED",
+       "RESTORING",
+       "UPGRADING",
+       "PAUSING",
+       "RESTORE_FAILED",
+       "RESTARTING",
+       "PAUSE_FAILED",
+       "RESIZING"
+      ]
+     },
+     "database": {
+      "type": "object",
+      "properties": {
+       "host": {
+        "type": "string",
+        "description": "Database host"
+       },
+       "version": {
+        "type": "string",
+        "description": "Database version"
+       },
+       "postgres_engine": {
+        "type": "string",
+        "description": "Database engine"
+       },
+       "release_channel": {
+        "type": "string",
+        "description": "Release channel"
+       }
+      },
+      "required": [
+       "host",
+       "version",
+       "postgres_engine",
+       "release_channel"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "ref",
+     "organization_id",
+     "organization_slug",
+     "name",
+     "region",
+     "created_at",
+     "status",
+     "database"
+    ]
+   }
+  },
+  "GET /v1/projects/{ref}/health": {
+   "x-oauth-scope": "projects:read",
+   "response": {
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "name": {
+       "type": "string",
+       "enum": [
+        "auth",
+        "db",
+        "db_postgres_user",
+        "pooler",
+        "realtime",
+        "rest",
+        "storage",
+        "pg_bouncer"
+       ]
+      },
+      "healthy": {
+       "type": "boolean",
+       "deprecated": true,
+       "description": "Deprecated. Use `status` instead."
+      },
+      "status": {
+       "type": "string",
+       "enum": [
+        "COMING_UP",
+        "ACTIVE_HEALTHY",
+        "UNHEALTHY"
+       ]
+      },
+      "info": {
+       "anyOf": [
+        {
+         "type": "object",
+         "properties": {
+          "name": {
+           "type": "string",
+           "enum": [
+            "GoTrue"
+           ]
+          },
+          "version": {
+           "type": "string"
+          },
+          "description": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "name",
+          "version",
+          "description"
+         ]
+        },
+        {
+         "type": "object",
+         "properties": {
+          "healthy": {
+           "type": "boolean",
+           "deprecated": true,
+           "description": "Deprecated. Use `status` instead."
+          },
+          "db_connected": {
+           "type": "boolean"
+          },
+          "replication_connected": {
+           "type": "boolean"
+          },
+          "connected_cluster": {
+           "type": "integer",
+           "minimum": -9007199254740991,
+           "maximum": 9007199254740991
+          }
+         },
+         "required": [
+          "healthy",
+          "db_connected",
+          "replication_connected",
+          "connected_cluster"
+         ]
+        },
+        {
+         "type": "object",
+         "properties": {
+          "db_schema": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "db_schema"
+         ]
+        }
+       ]
+      },
+      "error": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "name",
+      "healthy",
+      "status"
+     ]
+    }
+   }
+  },
+  "GET /v1/projects/{ref}/jit-access": {
+   "x-oauth-scope": "database:read",
+   "response": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "oneOf": [
+     {
+      "type": "object",
+      "properties": {
+       "state": {
+        "type": "string",
+        "enum": [
+         "enabled",
+         "disabled"
+        ]
+       },
+       "appliedSuccessfully": {
+        "type": "boolean"
+       }
+      },
+      "required": [
+       "state"
+      ]
+     },
+     {
+      "type": "object",
+      "properties": {
+       "state": {
+        "type": "string",
+        "const": "unavailable"
+       },
+       "unavailableReason": {
+        "type": "string",
+        "enum": [
+         "platform_unsupported",
+         "postgres_upgrade_required",
+         "ssl_enforcement_required",
+         "temporarily_unavailable"
+        ]
+       }
+      },
+      "required": [
+       "state",
+       "unavailableReason"
+      ]
+     }
+    ]
+   }
+  },
+  "GET /v1/projects/{ref}/advisors/security": {
+   "x-oauth-scope": "database:read",
+   "response": {
+    "type": "object",
+    "properties": {
+     "lints": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "name": {
+         "type": "string",
+         "enum": [
+          "unindexed_foreign_keys",
+          "auth_users_exposed",
+          "auth_rls_initplan",
+          "no_primary_key",
+          "unused_index",
+          "multiple_permissive_policies",
+          "policy_exists_rls_disabled",
+          "rls_enabled_no_policy",
+          "duplicate_index",
+          "security_definer_view",
+          "function_search_path_mutable",
+          "rls_disabled_in_public",
+          "extension_in_public",
+          "rls_references_user_metadata",
+          "materialized_view_in_api",
+          "foreign_table_in_api",
+          "unsupported_reg_types",
+          "auth_otp_long_expiry",
+          "auth_otp_short_length",
+          "ssl_not_enforced",
+          "log_connections_not_enabled",
+          "network_restrictions_not_set",
+          "password_requirements_min_length",
+          "pitr_not_enabled",
+          "auth_leaked_password_protection",
+          "auth_insufficient_mfa_options",
+          "auth_password_policy_missing",
+          "leaked_service_key",
+          "no_backup_admin",
+          "vulnerable_postgres_version",
+          "db_not_reachable",
+          "db_connection_failing",
+          "db_connection_limit_reached",
+          "instance_telemetry_lost",
+          "instance_db_down",
+          "instance_alert_firing",
+          "log_data_api_error_rate_high",
+          "log_auth_error_rate_high",
+          "log_storage_error_rate_high",
+          "log_edge_function_error_rate_high",
+          "project_not_active",
+          "advisor_check_unavailable"
+         ]
+        },
+        "title": {
+         "type": "string"
+        },
+        "level": {
+         "type": "string",
+         "enum": [
+          "ERROR",
+          "WARN",
+          "INFO"
+         ]
+        },
+        "facing": {
+         "type": "string",
+         "enum": [
+          "EXTERNAL"
+         ]
+        },
+        "categories": {
+         "type": "array",
+         "items": {
+          "type": "string",
+          "enum": [
+           "PERFORMANCE",
+           "SECURITY",
+           "HEALTH"
+          ]
+         },
+         "x-ignore-array-items-must-be-objects": true
+        },
+        "description": {
+         "type": "string"
+        },
+        "detail": {
+         "type": "string"
+        },
+        "remediation": {
+         "type": "string"
+        },
+        "metadata": {
+         "type": "object",
+         "properties": {
+          "schema": {
+           "type": "string"
+          },
+          "name": {
+           "type": "string"
+          },
+          "entity": {
+           "type": "string"
+          },
+          "type": {
+           "type": "string",
+           "enum": [
+            "table",
+            "view",
+            "materialized view",
+            "foreign table",
+            "auth",
+            "function",
+            "extension",
+            "compliance",
+            "health"
+           ]
+          },
+          "fkey_name": {
+           "type": "string"
+          },
+          "fkey_columns": {
+           "x-ignore-array-items-must-be-objects": true,
+           "type": "array",
+           "items": {
+            "type": "number"
+           }
+          }
+         }
+        },
+        "cache_key": {
+         "type": "string"
+        },
+        "observed_at": {
+         "type": "string",
+         "format": "date-time",
+         "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+        }
+       },
+       "required": [
+        "name",
+        "title",
+        "level",
+        "facing",
+        "categories",
+        "description",
+        "detail",
+        "remediation",
+        "cache_key"
+       ]
+      }
+     }
+    },
+    "required": [
+     "lints"
+    ]
+   }
+  },
+  "GET /v1/projects/{ref}/advisors/performance": {
+   "x-oauth-scope": "database:read",
+   "response": {
+    "type": "object",
+    "properties": {
+     "lints": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "name": {
+         "type": "string",
+         "enum": [
+          "unindexed_foreign_keys",
+          "auth_users_exposed",
+          "auth_rls_initplan",
+          "no_primary_key",
+          "unused_index",
+          "multiple_permissive_policies",
+          "policy_exists_rls_disabled",
+          "rls_enabled_no_policy",
+          "duplicate_index",
+          "security_definer_view",
+          "function_search_path_mutable",
+          "rls_disabled_in_public",
+          "extension_in_public",
+          "rls_references_user_metadata",
+          "materialized_view_in_api",
+          "foreign_table_in_api",
+          "unsupported_reg_types",
+          "auth_otp_long_expiry",
+          "auth_otp_short_length",
+          "ssl_not_enforced",
+          "log_connections_not_enabled",
+          "network_restrictions_not_set",
+          "password_requirements_min_length",
+          "pitr_not_enabled",
+          "auth_leaked_password_protection",
+          "auth_insufficient_mfa_options",
+          "auth_password_policy_missing",
+          "leaked_service_key",
+          "no_backup_admin",
+          "vulnerable_postgres_version",
+          "db_not_reachable",
+          "db_connection_failing",
+          "db_connection_limit_reached",
+          "instance_telemetry_lost",
+          "instance_db_down",
+          "instance_alert_firing",
+          "log_data_api_error_rate_high",
+          "log_auth_error_rate_high",
+          "log_storage_error_rate_high",
+          "log_edge_function_error_rate_high",
+          "project_not_active",
+          "advisor_check_unavailable"
+         ]
+        },
+        "title": {
+         "type": "string"
+        },
+        "level": {
+         "type": "string",
+         "enum": [
+          "ERROR",
+          "WARN",
+          "INFO"
+         ]
+        },
+        "facing": {
+         "type": "string",
+         "enum": [
+          "EXTERNAL"
+         ]
+        },
+        "categories": {
+         "type": "array",
+         "items": {
+          "type": "string",
+          "enum": [
+           "PERFORMANCE",
+           "SECURITY",
+           "HEALTH"
+          ]
+         },
+         "x-ignore-array-items-must-be-objects": true
+        },
+        "description": {
+         "type": "string"
+        },
+        "detail": {
+         "type": "string"
+        },
+        "remediation": {
+         "type": "string"
+        },
+        "metadata": {
+         "type": "object",
+         "properties": {
+          "schema": {
+           "type": "string"
+          },
+          "name": {
+           "type": "string"
+          },
+          "entity": {
+           "type": "string"
+          },
+          "type": {
+           "type": "string",
+           "enum": [
+            "table",
+            "view",
+            "materialized view",
+            "foreign table",
+            "auth",
+            "function",
+            "extension",
+            "compliance",
+            "health"
+           ]
+          },
+          "fkey_name": {
+           "type": "string"
+          },
+          "fkey_columns": {
+           "x-ignore-array-items-must-be-objects": true,
+           "type": "array",
+           "items": {
+            "type": "number"
+           }
+          }
+         }
+        },
+        "cache_key": {
+         "type": "string"
+        },
+        "observed_at": {
+         "type": "string",
+         "format": "date-time",
+         "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+        }
+       },
+       "required": [
+        "name",
+        "title",
+        "level",
+        "facing",
+        "categories",
+        "description",
+        "detail",
+        "remediation",
+        "cache_key"
+       ]
+      }
+     }
+    },
+    "required": [
+     "lints"
+    ]
+   }
+  },
+  "POST /v1/projects/{ref}/database/query/read-only": {
+   "x-oauth-scope": "database:read",
+   "response": null,
+   "request": {
+    "type": "object",
+    "properties": {
+     "query": {
+      "type": "string",
+      "minLength": 1
+     },
+     "parameters": {
+      "type": "array",
+      "items": {}
+     }
+    },
+    "required": [
+     "query"
+    ],
+    "example": {
+     "query": "select * from pg_stat_activity limit 1;"
+    }
+   }
+  },
+  "GET /v1/projects/{ref}/storage/buckets": {
+   "x-oauth-scope": "storage:read",
+   "response": {
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "id": {
+       "type": "string"
+      },
+      "name": {
+       "type": "string"
+      },
+      "owner": {
+       "type": "string"
+      },
+      "created_at": {
+       "type": "string"
+      },
+      "updated_at": {
+       "type": "string"
+      },
+      "public": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "id",
+      "name",
+      "owner",
+      "created_at",
+      "updated_at",
+      "public"
+     ]
+    }
+   }
+  }
+ },
+ "oauth_authorize_parameters": [
+  "client_id",
+  "response_type",
+  "redirect_uri",
+  "scope",
+  "state",
+  "response_mode",
+  "code_challenge",
+  "code_challenge_method",
+  "organization_slug",
+  "target_flow",
+  "resource"
+ ],
+ "oauth_token_response": {
+  "type": "object",
+  "properties": {
+   "access_token": {
+    "type": "string"
+   },
+   "refresh_token": {
+    "description": "The `urn:ietf:params:oauth:grant-type:jwt-bearer` grant type issues access tokens only, no refresh token is returned and the token cannot be revoked via `/v1/oauth/revoke`.",
+    "type": "string"
+   },
+   "expires_in": {
+    "type": "integer",
+    "minimum": -9007199254740991,
+    "maximum": 9007199254740991
+   },
+   "token_type": {
+    "type": "string",
+    "enum": [
+     "Bearer"
+    ]
+   }
+  },
+  "required": [
+   "access_token",
+   "expires_in",
+   "token_type"
+  ]
+ },
+ "reachable_with_postern_scopes": {
+  "projects:read": [
+   "GET /v1/organizations/{slug}/projects",
+   "GET /v1/projects",
+   "GET /v1/projects/{ref}",
+   "GET /v1/projects/{ref}/database/context",
+   "GET /v1/projects/{ref}/health",
+   "GET /v1/projects/{ref}/network-restrictions",
+   "GET /v1/projects/{ref}/restore",
+   "GET /v1/projects/{ref}/upgrade/eligibility",
+   "GET /v1/projects/{ref}/upgrade/status",
+   "POST /v1/projects/{ref}/network-bans/retrieve",
+   "POST /v1/projects/{ref}/network-bans/retrieve/enriched"
+  ],
+  "database:read": [
+   "GET /v1/projects/{ref}/advisors/performance",
+   "GET /v1/projects/{ref}/advisors/security",
+   "GET /v1/projects/{ref}/config/database/pgbouncer",
+   "GET /v1/projects/{ref}/config/database/pooler",
+   "GET /v1/projects/{ref}/config/database/postgres",
+   "GET /v1/projects/{ref}/database/backups",
+   "GET /v1/projects/{ref}/database/backups/restore-point",
+   "GET /v1/projects/{ref}/database/backups/schedule",
+   "GET /v1/projects/{ref}/database/jit",
+   "GET /v1/projects/{ref}/database/migrations",
+   "GET /v1/projects/{ref}/database/migrations/{version}",
+   "GET /v1/projects/{ref}/database/openapi",
+   "GET /v1/projects/{ref}/jit-access",
+   "GET /v1/projects/{ref}/readonly",
+   "GET /v1/projects/{ref}/ssl-enforcement",
+   "GET /v1/projects/{ref}/types/typescript",
+   "GET /v1/snippets",
+   "GET /v1/snippets/{id}",
+   "POST /v1/projects/{ref}/database/jit",
+   "POST /v1/projects/{ref}/database/query/read-only"
+  ],
+  "storage:read": [
+   "GET /v1/projects/{ref}/storage/buckets"
+  ]
+ }
+}

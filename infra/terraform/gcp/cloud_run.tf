@@ -1,5 +1,21 @@
 # Terraform owns the shape of each service and job: identity, scaling, limits and env.
 # CI owns which image runs (ADR-010), so image and client fields are ignored here.
+#
+# Secrets reach the containers as environment variables read from Secret Manager at
+# startup. Each component references only the secrets secret_access.json lets it read
+# (TM-05); tests/credential_audit/test_gcp_iam.py checks the two agree.
+
+locals {
+  # env var => secret, per component
+  api_secret_env = {
+    POSTERN_DATABASE_URL           = "control-plane-db-url-api"
+    POSTERN_SUPABASE_CLIENT_SECRET = "supabase-oauth-client-secret"
+    POSTERN_TOKEN_KEY              = "token-encryption-key"
+  }
+  worker_secret_env = {
+    POSTERN_DATABASE_URL = "control-plane-db-url-worker"
+  }
+}
 
 resource "google_cloud_run_v2_service" "api" {
   name                = "postern-api"
@@ -25,6 +41,30 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "POSTERN_COMPONENT"
         value = "api"
       }
+      env {
+        name  = "POSTERN_API_URL"
+        value = var.api_url
+      }
+      env {
+        name  = "POSTERN_SUPABASE_CLIENT_ID"
+        value = var.supabase_oauth_client_id
+      }
+      env {
+        name  = "POSTERN_WORKER_SA_EMAIL"
+        value = google_service_account.worker.email
+      }
+      dynamic "env" {
+        for_each = local.api_secret_env
+        content {
+          name = env.key
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.placeholder[env.value].secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
 
       resources {
         limits = {
@@ -46,7 +86,8 @@ resource "google_cloud_run_v2_service" "api" {
     ]
   }
 
-  depends_on = [google_project_service.enabled]
+  # A revision can't start until each secret it references can be read.
+  depends_on = [google_project_service.enabled, google_secret_manager_secret_iam_member.reader]
 }
 
 # Anyone may call the API: webhooks and OAuth callbacks come from the internet, and each
@@ -80,6 +121,30 @@ resource "google_cloud_run_v2_job" "worker" {
           name  = "POSTERN_COMPONENT"
           value = "worker"
         }
+        env {
+          name  = "POSTERN_API_URL"
+          value = var.api_url
+        }
+        env {
+          name  = "POSTERN_GCP_PROJECT"
+          value = var.project_id
+        }
+        env {
+          name  = "POSTERN_BQ_DATASET"
+          value = google_bigquery_dataset.postern.dataset_id
+        }
+        dynamic "env" {
+          for_each = local.worker_secret_env
+          content {
+            name = env.key
+            value_source {
+              secret_key_ref {
+                secret  = google_secret_manager_secret.placeholder[env.value].secret_id
+                version = "latest"
+              }
+            }
+          }
+        }
 
         resources {
           limits = {
@@ -99,5 +164,6 @@ resource "google_cloud_run_v2_job" "worker" {
     ]
   }
 
-  depends_on = [google_project_service.enabled]
+  # A revision can't start until each secret it references can be read.
+  depends_on = [google_project_service.enabled, google_secret_manager_secret_iam_member.reader]
 }

@@ -49,6 +49,11 @@ _TOOLS = (
     ),
     ToolSpec("findings.record", "Record a finding for the connected project.", _TIER_0),
     ToolSpec(
+        "findings.explain",
+        "Attach a plain-language explanation to a finding. Can't change what was found.",
+        _TIER_0,
+    ),
+    ToolSpec(
         "findings.read",
         "Read findings for the connected project.",
         frozenset({Tier.READ_AND_REPORT, Tier.DRAFT, Tier.CONTACT}),

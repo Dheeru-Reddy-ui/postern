@@ -214,10 +214,14 @@
         "owner": "dheeru",
         "registry_version": 1,
         "schedule": "nightly",
-        "status": "planned",
+        "status": "active",
         "tier": 0,
         "tier_name": "read_and_report",
         "tools": [
+          {
+            "description": "Attach a plain-language explanation to a finding. Can't change what was found.",
+            "name": "findings.explain"
+          },
           {
             "description": "Record a finding for the connected project.",
             "name": "findings.record"
@@ -244,7 +248,7 @@
           }
         ]
       },
-      "manifest_hash": "2e2d446877cb41c527fb94f7df42ed85cbdb1b16b1c0ab906e2f1797daa7a6c9"
+      "manifest_hash": "72a24b94b4c44a0a0c8b6203229958f996028a7aa3ad53270280a3908dc7711b"
     },
     "usage_watcher": {
       "manifest": {

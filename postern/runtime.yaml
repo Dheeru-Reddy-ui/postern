@@ -1,0 +1,42 @@
+# Postern runtime configuration (Phase 3). No secrets here: secrets come from Secret Manager
+# through environment variables, and URLs from Terraform. Changing models, prices or caps
+# goes through review (and, from Phase 4, the eval gate).
+
+llm:
+  provider: vertex_ai
+  # Gemini 3.x models are served from Vertex AI's global endpoint, not us-central1.
+  location: global
+  # Google's model-versions page (checked 2026-10-14) lists both as available until at
+  # least July 2027 and May 2027 respectively.
+  primary_model: gemini-3.5-flash-lite
+  fallback_model: gemini-3.1-flash-lite
+  # Worst-case prices (USD per 1M tokens) used to reserve spend before a call. They match
+  # LiteLLM 1.103.1's pricing table; the actual cost is recorded after each call.
+  reservation_prices_usd_per_million:
+    gemini-3.5-flash-lite: {input: 0.30, output: 2.50}
+    gemini-3.1-flash-lite: {input: 0.25, output: 1.50}
+  # Hard monthly cap: about ₹100 at ₹88 per US dollar (CLAUDE.md, Dheeru 2026-10-14).
+  monthly_cap_usd: 1.13
+  max_output_tokens: 1024
+  timeout_seconds: 60
+  # Explanations need no step-by-step reasoning. LiteLLM 1.103.1 maps "disable" to Gemini 3's
+  # lowest thinking level with thoughts excluded (checked in its source, 2026-10-14).
+  reasoning_effort: disable
+
+agent_limits:
+  max_steps: 80
+  max_llm_calls_per_run: 3
+  max_prompt_chars: 40000
+
+probe:
+  # TM-26: one request at a time per project, at least this far apart.
+  min_interval_seconds: 0.5
+  timeout_seconds: 10
+  max_tables_per_run: 40
+  row_count_cap: 1000
+  user_agent: "Postern-ExposureProbe/0.3 (+https://github.com/Dheeru-Reddy-ui/postern)"
+
+worker:
+  visibility_timeout_seconds: 600
+  max_attempts: 5
+  stale_after_hours: 26

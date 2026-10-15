@@ -60,3 +60,21 @@ variable "placeholder_job_image" {
   type    = string
   default = "us-docker.pkg.dev/cloudrun/container/job@sha256:831ba01b2d55931e33e49088fbe806c2beb0f736247c1484b76a151740bb9150"
 }
+
+# --- Phase 3 runtime ------------------------------------------------------------------
+
+variable "api_url" {
+  description = "postern-api's public URL. The OAuth redirect URI and the worker's token-broker audience are built from it, so it must match exactly."
+  type        = string
+  default     = "https://postern-api-3nsmysl4ka-uc.a.run.app"
+}
+
+variable "supabase_oauth_client_id" {
+  description = "Client ID of Postern's Supabase OAuth app (public; the secret is in Secret Manager)."
+  type        = string
+}
+
+variable "alert_email" {
+  description = "Where operator alerts go. Kept in the gitignored terraform.tfvars."
+  type        = string
+}

@@ -44,6 +44,11 @@ def test_service_accounts_read_only_their_own_secrets(terraform: Callable[[str],
         assert not gcp.resources(kind), f"{kind} bypasses secret_access.json"
     assert set(gcp.locals()["runtime_members"]) == RUNTIME_READERS
 
+    # Each Cloud Run secret reference is one secret_access.json lets that component read.
+    for component in RUNTIME_READERS:
+        for env, secret in gcp.locals()[f"{component}_secret_env"].items():
+            assert component in secrets[secret]["readers"], f"{component} reads {secret} ({env})"
+
     # No account gets a project-wide Secret Manager role, which would cover every secret.
     for kind in ("google_project_iam_member", "google_project_iam_binding"):
         for name, body in gcp.resources(kind).items():

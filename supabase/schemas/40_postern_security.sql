@@ -64,9 +64,7 @@ grant execute on function postern.enqueue_run(text, text, text, uuid)
   to postern_api, postern_worker;
 grant execute on function postern.transition_run(uuid, postern.run_status, text)
   to postern_worker;
-grant execute on function postern.record_step(
-  uuid, integer, text, text, text, text, text, text, integer
-) to postern_worker;
+-- record_step's grant lives in 50_postern_runtime.sql (its signature changed in Phase 3).
 grant execute on function postern.record_human_decision(uuid, text, uuid) to postern_api;
 grant execute on function postern.write_audit(text, uuid, text, text, jsonb)
   to postern_api, postern_worker;

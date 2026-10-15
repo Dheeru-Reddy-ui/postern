@@ -30,6 +30,43 @@ comment on table postern.users is 'People who use Postern. Contact details arriv
 
 -- ---------------------------------------------------------------------- connections
 
+-- What kind of Supabase key a string is, without trusting the caller (TM-06). Only
+-- 'publishable' and 'legacy_anon' may ever be stored; secret and service_role keys are
+-- rejected by the check constraint on connections.publishable_key.
+create function postern.supabase_key_kind(p_key text)
+returns text
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  payload text;
+  claims jsonb;
+begin
+  if p_key is null then
+    return null;
+  elsif p_key like 'sb\_publishable\_%' then
+    return 'publishable';
+  elsif p_key like 'sb\_secret\_%' then
+    return 'secret';
+  elsif p_key ~ '^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$' then
+    payload := translate(split_part(p_key, '.', 2), '-_', '+/');
+    payload := payload || repeat('=', (4 - length(payload) % 4) % 4);
+    begin
+      claims := convert_from(decode(payload, 'base64'), 'UTF8')::jsonb;
+    exception when others then
+      return 'unknown';
+    end;
+    return case claims ->> 'role'
+      when 'anon' then 'legacy_anon'
+      when 'service_role' then 'legacy_service_role'
+      else 'unknown'
+    end;
+  end if;
+  return 'unknown';
+end
+$$;
+
 create table postern.connections (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references postern.users (id) on delete cascade,
@@ -37,6 +74,10 @@ create table postern.connections (
   supabase_project_ref text,
   github_installation_id bigint,
   status text not null default 'active' check (status in ('active', 'revoked', 'error')),
+  status_reason text,
+  -- The public key the owner pasted for exposure probes. Public by design, but only a
+  -- publishable or legacy anon key may ever be stored (TM-06).
+  publishable_key text,
   -- OAuth tokens arrive already envelope-encrypted by postern-api (TM-05). The check below
   -- rejects anything without Postern's envelope header, so a plaintext token can't be
   -- stored by mistake.
@@ -56,6 +97,10 @@ create table postern.connections (
   ),
   constraint supabase_project_ref_format check (
     supabase_project_ref is null or supabase_project_ref ~ '^[a-z]{20}$'
+  ),
+  constraint publishable_key_is_public check (
+    publishable_key is null
+    or postern.supabase_key_kind(publishable_key) in ('publishable', 'legacy_anon')
   ),
   constraint tokens_are_envelope_ciphertext check (
     (access_token_ciphertext is null
@@ -132,6 +177,9 @@ create table postern.steps (
   refusal_reason text,
   input_hash text not null check (input_hash ~ '^[0-9a-f]{64}$'),
   output_hash text check (output_hash ~ '^[0-9a-f]{64}$'),
+  -- The step's result, so a resumed run can continue without redoing it. Schema metadata,
+  -- counts and statuses only; never user row data (invariant 4).
+  output jsonb,
   duration_ms integer check (duration_ms >= 0),
   created_at timestamptz not null default now(),
   unique (run_id, step_index)
@@ -154,6 +202,10 @@ create table postern.findings (
     check (source in ('advisor', 'splinter_fallback', 'probe', 'introspection')),
   object_schema text,
   object_name text,
+  title text,
+  -- Plain-language explanation written by the LLM (ADR-004: from facts, never row data).
+  explanation text,
+  explanation_model text,
   probe_http_status integer,
   -- Invariant 4: a probe records a count, capped at 1000, never rows.
   probe_row_count integer check (probe_row_count between 0 and 1000),
@@ -161,6 +213,9 @@ create table postern.findings (
   status text not null default 'open' check (
     status in ('open', 'proposed', 'fixed', 'verified_closed', 'dismissed', 'reopened')
   ),
+  first_seen_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  last_seen_run_id uuid references postern.runs (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   -- TM-14: only a probe-confirmed live exposure may be critical.
