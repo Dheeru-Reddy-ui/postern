@@ -1,8 +1,7 @@
 # Postern architecture
 
-**Status:** Phase 3 (runtime and Security Sentinel). Database, secrets and infrastructure
-are applied to production (2026-10-15); the new code deploys when the Phase 3 PR merges.
-Each phase updates this file.
+**Status:** Phase 3 complete (signed off 2026-10-16): Security Sentinel checks the testbed
+nightly in production. Each phase updates this file.
 
 ## What exists now
 

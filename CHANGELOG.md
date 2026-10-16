@@ -4,7 +4,7 @@ All notable changes to Postern are recorded here, one section per phase.
 
 ## [Unreleased]
 
-### Phase 3: runtime and Security Sentinel (in progress)
+### Phase 3: runtime and Security Sentinel (complete, signed off by Dheeru 2026-10-16)
 
 **Applied to production on 2026-10-15** (each step approved by Dheeru):
 - the Supabase OAuth app `Postern` was created in org `postern` with `projects:read`,
@@ -52,8 +52,19 @@ All notable changes to Postern are recorded here, one section per phase.
 temperature (1.0); Postern uses 0. Changing it alters model behaviour, so it goes through the
 eval gate.
 
-Still to do for Phase 3's "Done when": observe a real nightly run (pg_cron at 02:17 UTC, the
-worker at 02:30 UTC) and replay it.
+**First scheduled nightly run (2026-10-16):**
+- pg_cron enqueued `80da20dc…` at 02:17 UTC, Cloud Scheduler started the worker at 02:30,
+  and the run completed at 02:33.
+- All three planted issues were recorded as `seen_again`; there are still exactly 3
+  findings.
+- Afterwards:
+  - no alerts or errors;
+  - no stale connections;
+  - the outbox is fully shipped, and BigQuery holds exactly the events the three runs
+    produced (9 run, 28 step, 8 finding, 3 LLM call);
+  - the run replays from the audit log, and the chain is intact (76 rows).
+- Cost to date: $0.0015 of LLM spend. Artifact Registry uses 375 MB of its 0.5 GB free tier;
+  Secret Manager has 4 active versions of 6 free.
 
 **Incident:** during setup, `postern-control` was paused instead of another free project,
 then restored before any database change was made. No users were affected and no data was
