@@ -8,10 +8,10 @@ row-level security. Postern watches for that door, and for health and performanc
 and turns what it finds into tested fixes that a human approves. Postern holds no credential
 that could open the door itself.
 
-> **Status: Phase 3 (runtime and Security Sentinel), being rolled out.** The control plane is
-> live. The worker runtime, the LLM gateway, Supabase OAuth and the Security Sentinel are
-> built and tested, and are going into production on a single test project. See
-> [PHASE_PROMPTS.md](PHASE_PROMPTS.md) for the build plan.
+> **Status: Phase 3 complete (runtime and Security Sentinel).** Security Sentinel checks a
+> test project every night in production: it finds every planted exposure, confirms each
+> one with a count-only probe, and reports nothing on the clean tables. Phase 4 adds the
+> evaluation layer and CI gate. See [PHASE_PROMPTS.md](PHASE_PROMPTS.md) for the build plan.
 
 ## What "read-only by construction" means
 
